@@ -37,17 +37,26 @@ v1.0 = 可安装的本地 HiFi 桌面播放器，具备「选目录 → 扫库 �
 | 字段 | 来源 | 展示规则 |
 | --- | --- | --- |
 | 格式（flac/wav/mp3/m4a/ogg） | 文件扩展名 | 直接展示 |
-| 标题/艺术家/专辑 | 文件名推断 | 低于阈值时显示"未知艺术家/未知专辑" |
-| 采样率 / 位深 | 当前无法读取 | 显示 `—` 并标注"需 audio-core" |
+| 标题/艺术家/专辑 | 标签解析，失败回退文件名 | 缺失时显示"未知艺术家/未知专辑" |
+| 时长 / 采样率 / 位深 | 标签解析（`music-metadata`） | 读到就显示真实值；读不到显示 `—` |
 | 输出设备 / 独占模式 | 未接入 | 显示"未接入 audio-core"，不得出现 mock 设备名 |
 
 删除 `mockHifiSignalInfo` 与任何伪造信号值。
 
-### 5. 持久化
+### 5. 元数据与封面（v1.0 增补）
+
+经确认，把原属 backlog 的元数据解析拉进 v1.0：
+
+- 依赖 `music-metadata`（纯 JS 读文件头，不解码音频），运行在主进程扫描器内，不跨越 preload 边界。
+- 读取：标题、艺术家、专辑、时长、采样率、位深、编码、内嵌封面。
+- 封面：提取后写入 `app.getPath("userData")/covers/` 缓存，按曲目 id 命名，通过受控媒体协议读取；不做封面编辑与联网抓取。
+- 该变更影响 `Track` 类型、扫描器、媒体协议白名单，必须在 S3 定型类型、S5 落地，不允许事后补。
+
+### 6. 持久化
 
 单目录模型。主进程把 `{ musicDirectory, backgroundImage, theme, reduceMotion, volume }` 存到 `app.getPath("userData")/settings.json`，渲染层通过 preload 读写，不直接接触文件系统。
 
-### 6. 交付形态
+### 7. 交付形态
 
 - `pnpm build` 同时产出渲染层 `dist/` 与主进程 `dist-electron/`。
 - `pnpm start` 启动生产构建。
@@ -55,7 +64,7 @@ v1.0 = 可安装的本地 HiFi 桌面播放器，具备「选目录 → 扫库 �
 
 ## 不做
 
-见 [backlog](../product/backlog.md)：Rust audio-core、标签解析与封面、多目录、歌词、角色舞台/Live2D/MV、自动更新、在线流媒体。
+见 [backlog](../product/backlog.md)：Rust audio-core、多目录、歌词、角色舞台/Live2D/MV、自动更新、在线流媒体。
 
 ## 影响
 
