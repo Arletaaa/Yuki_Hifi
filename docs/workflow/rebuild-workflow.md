@@ -311,4 +311,18 @@ S1 只产出文档，所以确认方式是读文档而不是看界面。
 | 边界 | 不做角色舞台/Live2D/满屏粒子 | 是否接受这条红线 |
 
 确认后进入 S2；S2 的产出是**可截图看的两档界面**，届时你直接看效果再提修改。
+## 11. 进度快照（2026-10-24 收尾）
 
+**已完成**：S0 基线修复、S1 范围与视觉方向、S2 系统层设计、S2R-0 场景 spike、S2R-1a 虚拟化、S3 领域模型与收藏、S5 元数据/封面/持久化/搜索排序、S2R-1b 封面接线与 CD 点击、S4 播放链路、S6 信号诚实化、S7 构建链路。
+
+**S7 具体修复**（此前是"整个应用打不开"级别）：
+
+- `vite base: "./"`：`dist/index.html` 现在引用 `./assets/...`，`file://` 加载不再 404。
+- 新增 `tsconfig.electron-build.json`，`pnpm build` 会产出 `dist-electron/`（main / preload / media-protocol / media-access / music-scanner / settings-store）。
+- `scripts/clean.mjs` 在构建前清空产物，避免测试文件残留在打包目录。
+- `pnpm start` = `electron .`（读取 `main` → `dist-electron/main.js`）。
+- `electron-builder.yml` 已就位（Windows portable），但**未安装 electron-builder、未实际打包**。
+
+**仍未完成**：S2R-2 交互（hover/搜索飞行/两段式移动）、S2R-3 转场与播放台、S2R-4 降级与可达性、Bay 生长动画、S8（构建冒烟测试、E2E、文档收尾）、打包执行。
+
+**仍未验证**：Electron 窗口内的一切——帧率是否 ≥45fps、真实封面渲染、`settings.json` 持久化、媒体协议播放、`--disable-gpu` 降级。

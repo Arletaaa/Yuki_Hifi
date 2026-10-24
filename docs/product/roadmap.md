@@ -35,14 +35,14 @@
 - [x] S2R-1a 性能与虚拟化（架子全局实例化 + CD 按 Bay 虚拟化：240/500 张均为 13 draw calls、挂载 3 段）
 - [x] S3 领域模型 + 收藏（store 拆 library/queue/playback 切片；`Track` 增加 `coverPath`/`metadataSource`；收藏与队列解耦；53 个用例）
 - [x] S5 扫描 / 元数据 / 封面 / 持久化（music-metadata + 封面缓存 + settings.json + 搜索排序；70 个桌面用例）
-- [ ] S6 HiFi 信息诚实化
-- [ ] S4 播放链路
+- [x] S6 HiFi 信息诚实化（mock 信号已删除；chip 显示真实格式/采样率/位深/质量）
+- [x] S4 播放链路（seek 滑块、静音、播完语义、上一首 3 秒规则）
 - [~] S2R-1 长廊与生长（1a 虚拟化完成；1b 封面与点击完成；生长/hover/搜索飞行未做）
 - [ ] S2R-2 长廊交互
 - [ ] S2R-3 转场与播放台
 - [ ] S2R-4 降级与可达性
 - [ ] S2R-5 打磨
-- [ ] S7 生产可用
+- [~] S7 生产可用（相对路径构建 + dist-electron 产物 + pnpm start + electron-builder 配置；安装包未实际构建）
 - [ ] S8 收尾
 
 ## v1.1（已确认优先级，见 backlog）

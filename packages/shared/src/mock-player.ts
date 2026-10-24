@@ -8,6 +8,7 @@ export const initialPlayerSnapshot: PlayerSnapshot = {
   favorites: [],
   playbackMode: "sequential",
   volume: 72,
+  muted: false,
   positionSeconds: 0,
   durationSeconds: 0,
   playbackErrorMessage: null

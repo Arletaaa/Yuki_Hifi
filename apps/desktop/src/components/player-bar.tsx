@@ -1,7 +1,22 @@
-﻿import { AlertCircle, Heart, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
+import {
+  AlertCircle,
+  Heart,
+  ListMusic,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX
+} from "lucide-react";
+import type { CSSProperties } from "react";
 import type { PlaybackMode } from "@arlhifi/shared";
 import { formatBitDepth, formatDuration, formatSampleRate, getAudioFormatLabel, getQualityLabel } from "@arlhifi/shared";
 import { IconButton, Knob } from "@arlhifi/ui";
+import { seekTo } from "../hooks/audio-controller";
 import { useEffectiveMotionTier } from "../hooks/use-app-preferences";
 import { usePlayerStore } from "../store/player-store";
 import { VinylRecord } from "./vinyl-record";
@@ -13,6 +28,10 @@ const getProgressPercent = (positionSeconds: number, durationSeconds: number): n
 
   return Math.min(100, Math.max(0, (positionSeconds / durationSeconds) * 100));
 };
+
+interface SeekStyle extends CSSProperties {
+  readonly "--progress": string;
+}
 
 const modeMeta: Record<PlaybackMode, { readonly icon: typeof Repeat; readonly label: string }> = {
   sequential: { label: "顺序播放", icon: Repeat },
@@ -30,6 +49,8 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
   const positionSeconds = usePlayerStore((state) => state.positionSeconds);
   const durationSeconds = usePlayerStore((state) => state.durationSeconds);
   const volume = usePlayerStore((state) => state.volume);
+  const muted = usePlayerStore((state) => state.muted);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
   const playbackMode = usePlayerStore((state) => state.playbackMode);
   const playbackErrorMessage = usePlayerStore((state) => state.playbackErrorMessage);
   const togglePlayback = usePlayerStore((state) => state.togglePlayback);
@@ -80,7 +101,18 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
           >
             <ModeIcon aria-hidden="true" size={17} />
           </IconButton>
-          <IconButton disabled={!currentTrack} label="上一首" onClick={playPrevious}>
+          <IconButton
+            disabled={!currentTrack}
+            label="上一首（播放超过 3 秒时回到本曲开头）"
+            onClick={() => {
+              if (positionSeconds > 3) {
+                seekTo(0);
+                return;
+              }
+
+              playPrevious();
+            }}
+          >
             <SkipBack aria-hidden="true" size={18} />
           </IconButton>
           <button
@@ -101,18 +133,19 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
 
         <div className="bar__progress">
           <span className="bar__time">{formatDuration(positionSeconds)}</span>
-          <div
+          <input
             aria-label="播放进度"
-            aria-valuemax={durationSeconds}
-            aria-valuemin={0}
-            aria-valuenow={positionSeconds}
-            className="bar__track"
-            data-playing={isPlaying ? "true" : "false"}
-            role="progressbar"
-          >
-            <span className="bar__track-fill" style={{ width: `${progressPercent}%` }} />
-            <span className="bar__track-head" style={{ left: `${progressPercent}%` }} />
-          </div>
+            className="bar__seek"
+            disabled={durationSeconds <= 0}
+            max={Math.max(durationSeconds, 1)}
+            min={0}
+            onChange={(event) => {
+              seekTo(Number(event.currentTarget.value));
+            }}
+            style={{ "--progress": `${progressPercent}%` } as SeekStyle}
+            type="range"
+            value={Math.min(positionSeconds, Math.max(durationSeconds, 1))}
+          />
           <span className="bar__time">{formatDuration(durationSeconds)}</span>
         </div>
       </div>
@@ -136,6 +169,9 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
           <span className="signal__value">{currentTrack ? formatBitDepth(currentTrack.bitDepth) : "—"}</span>
           <span className="signal__quality">{currentTrack ? getQualityLabel(currentTrack.quality) : ""}</span>
         </div>
+        <IconButton active={muted} label={muted ? "取消静音" : "静音"} onClick={toggleMute}>
+          {muted ? <VolumeX aria-hidden="true" size={17} /> : <Volume2 aria-hidden="true" size={17} />}
+        </IconButton>
         <div className="bar__volume">
           <Knob label="音量" onChange={setVolume} value={volume} />
           <span className="bar__volume-value">{volume}</span>

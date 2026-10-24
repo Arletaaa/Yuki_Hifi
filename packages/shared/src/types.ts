@@ -34,6 +34,7 @@ export interface PlayerSnapshot {
   readonly favorites: readonly string[];
   readonly playbackMode: PlaybackMode;
   readonly volume: number;
+  readonly muted: boolean;
   readonly positionSeconds: number;
   readonly durationSeconds: number;
   readonly playbackErrorMessage: string | null;

@@ -4,11 +4,14 @@
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
+  "description": "Arlt HiFi Player desktop app",
   "scripts": {
     "dev": "node scripts/dev-electron.mjs",
     "dev:web": "vite --host 0.0.0.0",
     "dev:electron": "node scripts/dev-electron.mjs",
-    "build": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit && vite build",
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.electron-build.json && vite build",
+    "start": "electron .",
+    "dist": "electron-builder --win portable --config electron-builder.yml",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit"

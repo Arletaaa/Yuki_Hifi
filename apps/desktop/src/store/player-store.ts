@@ -16,6 +16,7 @@ export interface QueueActions {
 }
 
 export interface PlaybackActions {
+  readonly handleTrackEnded: () => void;
   readonly markPlaybackPaused: () => void;
   readonly markPlaybackStarted: () => void;
   readonly playNext: () => void;
@@ -25,6 +26,7 @@ export interface PlaybackActions {
   readonly setPlaybackError: (message: string | null) => void;
   readonly setPositionSeconds: (positionSeconds: number) => void;
   readonly setVolume: (volume: number) => void;
+  readonly toggleMute: () => void;
   readonly togglePlayback: () => void;
 }
 
@@ -151,7 +153,7 @@ const createQueueSlice: StateCreator<PlayerStore, [], [], QueueActions> = (set) 
 });
 
 /** 播放切片：传输控制与音频状态同步。 */
-const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = (set) => ({
+const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = (set, get) => ({
   playTrack: (track) => {
     set((state) => {
       const queueIncludesTrack = state.queue.some((queuedTrack) => queuedTrack.id === track.id);
@@ -247,6 +249,36 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
   },
   setPlaybackError: (message) => {
     set({ playbackErrorMessage: message, status: "paused" });
+  },
+  toggleMute: () => {
+    set((state) => ({ muted: !state.muted }));
+  },
+  /**
+   * 播完一首后的行为：
+   * - repeat-one：重播当前曲；
+   * - 顺序模式且已是队列最后一首：停止（不回绕）；
+   * - 其余情况：下一首。
+   */
+  handleTrackEnded: () => {
+    const state = get();
+    const queue = getPlayableQueue(state);
+    const currentIndex = getTrackIndex(queue, state.currentTrack);
+
+    if (queue.length === 0 || currentIndex < 0) {
+      return;
+    }
+
+    if (state.playbackMode === "repeat-one") {
+      set({ positionSeconds: 0, status: "playing" });
+      return;
+    }
+
+    if (state.playbackMode === "sequential" && currentIndex >= queue.length - 1) {
+      set({ positionSeconds: 0, status: "paused" });
+      return;
+    }
+
+    state.playNext();
   }
 });
 

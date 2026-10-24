@@ -323,3 +323,55 @@ describe("queue editing", () => {
     expect(store.getState().currentTrack).toEqual(second);
   });
 });
+describe("track end behaviour", () => {
+  const createQueue = () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first, second]);
+
+    return { first, second, store };
+  };
+
+  it("advances to the next track in sequential mode", () => {
+    const { first, second, store } = createQueue();
+
+    store.getState().playTrack(first);
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(second);
+    expect(store.getState().status).toBe("playing");
+  });
+
+  it("stops at the end of the queue in sequential mode", () => {
+    const { second, store } = createQueue();
+
+    store.getState().playTrack(second);
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(second);
+    expect(store.getState().status).toBe("paused");
+    expect(store.getState().positionSeconds).toBe(0);
+  });
+
+  it("replays the same track in repeat-one mode", () => {
+    const { first, store } = createQueue();
+
+    store.getState().playTrack(first);
+    store.getState().cyclePlaybackMode();
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().status).toBe("playing");
+  });
+
+  it("toggles mute", () => {
+    const { store } = createQueue();
+
+    expect(store.getState().muted).toBe(false);
+
+    store.getState().toggleMute();
+    expect(store.getState().muted).toBe(true);
+  });
+});

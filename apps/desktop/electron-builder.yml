@@ -1,0 +1,15 @@
+appId: com.arlt.hifi
+productName: Arlt HiFi Player
+directories:
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+asar: true
+npmRebuild: false
+win:
+  target:
+    - portable
+portable:
+  artifactName: ArltHiFiPlayer-${version}-portable.exe

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createTrackMediaUrl } from "@arlhifi/shared";
 import { getAudioPlaybackErrorMessage } from "./audio-playback";
+import { setAudioController } from "./audio-controller";
 import { usePlayerStore } from "../store/player-store";
 
 export const useAudioPlayback = (): void => {
@@ -9,7 +10,8 @@ export const useAudioPlayback = (): void => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const status = usePlayerStore((state) => state.status);
   const volume = usePlayerStore((state) => state.volume);
-  const playNext = usePlayerStore((state) => state.playNext);
+  const muted = usePlayerStore((state) => state.muted);
+  const handleTrackEnded = usePlayerStore((state) => state.handleTrackEnded);
   const setPositionSeconds = usePlayerStore((state) => state.setPositionSeconds);
   const setDurationSeconds = usePlayerStore((state) => state.setDurationSeconds);
   const markPlaybackStarted = usePlayerStore((state) => state.markPlaybackStarted);
@@ -30,7 +32,7 @@ export const useAudioPlayback = (): void => {
     };
 
     const handleEnded = (): void => {
-      playNext();
+      handleTrackEnded();
     };
 
     const handleError = (): void => {
@@ -49,7 +51,17 @@ export const useAudioPlayback = (): void => {
     audio.addEventListener("error", handleError);
     audio.addEventListener("pause", handlePause);
 
+    setAudioController({
+      seek: (seconds) => {
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        const target = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
+        audio.currentTime = target;
+        setPositionSeconds(target);
+      }
+    });
+
     return () => {
+      setAudioController(null);
       audio.pause();
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -58,7 +70,7 @@ export const useAudioPlayback = (): void => {
       audio.removeEventListener("pause", handlePause);
       audioRef.current = null;
     };
-  }, [markPlaybackPaused, playNext, setDurationSeconds, setPlaybackError, setPositionSeconds]);
+  }, [handleTrackEnded, markPlaybackPaused, setDurationSeconds, setPlaybackError, setPositionSeconds]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -68,7 +80,8 @@ export const useAudioPlayback = (): void => {
     }
 
     audio.volume = volume / 100;
-  }, [volume]);
+    audio.muted = muted;
+  }, [muted, volume]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -93,6 +106,11 @@ export const useAudioPlayback = (): void => {
     }
 
     if (status === "playing") {
+      // 单曲循环：播放结束后同一首需要从头再放。
+      if (audio.ended) {
+        audio.currentTime = 0;
+      }
+
       void audio
         .play()
         .then(() => {
