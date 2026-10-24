@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useSettingsStore, type MotionTier } from "../store/settings-store";
+﻿import { useEffect, useState } from "react";
+import type { MotionTier } from "@arlhifi/shared";
+import { useSettingsStore } from "../store/settings-store";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 

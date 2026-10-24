@@ -1,7 +1,8 @@
-import type { CSSProperties } from "react";
+﻿import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, Disc3, Loader2, RefreshCw } from "lucide-react";
 import type { Track } from "@arlhifi/shared";
 import { Button, IconButton } from "@arlhifi/ui";
+import { filterTracks, librarySortOptions, sortTracks, type LibrarySortKey } from "../lib/library-filter";
 import { EmptyState } from "./empty-state";
 import { TrackListHead, TrackRow } from "./track-row";
 
@@ -70,8 +71,12 @@ export const LibraryPage = ({
   scanStatus,
   tracks
 }: LibraryPageProps) => {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<LibrarySortKey>("title");
   const isBusy = scanStatus === "selecting" || scanStatus === "scanning";
   const hasTracks = tracks.length > 0;
+  const visibleTracks = useMemo(() => sortTracks(filterTracks(tracks, query), sortKey), [sortKey, tracks, query]);
+  const isSearching = query.trim().length > 0;
 
   return (
     <section className="page">
@@ -84,7 +89,33 @@ export const LibraryPage = ({
           <p className="page__sub">{directoryPath ?? "尚未选择音乐文件夹"}</p>
         </div>
         <div className="page__actions">
-          <span className="count-chip">{tracks.length} 首</span>
+          <div className="library-toolbar">
+            <input
+              aria-label="搜索曲目"
+              className="search-input"
+              onChange={(event) => {
+                setQuery(event.currentTarget.value);
+              }}
+              placeholder="搜索标题 / 艺术家 / 专辑"
+              type="search"
+              value={query}
+            />
+            <select
+              aria-label="排序方式"
+              className="sort-select"
+              onChange={(event) => {
+                setSortKey(event.currentTarget.value as LibrarySortKey);
+              }}
+              value={sortKey}
+            >
+              {librarySortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="count-chip">{isSearching ? `${visibleTracks.length} / ${tracks.length}` : `${tracks.length} 首`}</span>
           <IconButton disabled={!directoryPath || isBusy} label="重新扫描当前目录" onClick={onRefresh}>
             <RefreshCw aria-hidden="true" size={16} />
           </IconButton>
@@ -116,11 +147,27 @@ export const LibraryPage = ({
               title="选择文件夹…"
             />
           )
+        ) : hasTracks && visibleTracks.length === 0 ? (
+          <EmptyState
+            action={
+              <Button
+                onClick={() => {
+                  setQuery("");
+                }}
+                variant="ghost"
+              >
+                清除搜索
+              </Button>
+            }
+            copy={`没有匹配「${query.trim()}」的曲目，换个关键词试试。`}
+            icon={<Disc3 size={26} strokeWidth={1.5} />}
+            title="没有匹配的曲目"
+          />
         ) : hasTracks ? (
           <div className="track-list">
             <TrackListHead />
             <div className="track-list__body">
-              {tracks.map((track, index) => (
+              {visibleTracks.map((track, index) => (
                 <TrackRow
                   index={index}
                   isCurrent={track.id === currentTrackId}

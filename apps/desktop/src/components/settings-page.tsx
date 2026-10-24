@@ -1,7 +1,9 @@
-import { ImagePlus, RotateCcw } from "lucide-react";
+﻿import { ImagePlus, RotateCcw } from "lucide-react";
+import { createBackgroundMediaUrl } from "@arlhifi/shared";
 import { Button, SegmentedControl, type SegmentedOption } from "@arlhifi/ui";
 import { useEffectiveMotionTier } from "../hooks/use-app-preferences";
-import { useSettingsStore, type MotionTier, type ThemeMode } from "../store/settings-store";
+import type { MotionTier, ThemeMode } from "@arlhifi/shared";
+import { useSettingsStore } from "../store/settings-store";
 import { useWallpaperStore } from "../store/wallpaper-store";
 
 const themeOptions: readonly SegmentedOption<ThemeMode>[] = [
@@ -31,12 +33,12 @@ export const SettingsPage = ({ onSelectWallpaper, wallpaperErrorMessage }: Setti
   const setTheme = useSettingsStore((state) => state.setTheme);
   const motionTier = useSettingsStore((state) => state.motionTier);
   const setMotionTier = useSettingsStore((state) => state.setMotionTier);
-  const wallpaperUrl = useWallpaperStore((state) => state.url);
+  const wallpaperPath = useWallpaperStore((state) => state.path);
   const dim = useWallpaperStore((state) => state.dim);
   const blur = useWallpaperStore((state) => state.blur);
   const setDim = useWallpaperStore((state) => state.setDim);
   const setBlur = useWallpaperStore((state) => state.setBlur);
-  const clearWallpaper = useWallpaperStore((state) => state.clearWallpaper);
+  const resetWallpaper = useWallpaperStore((state) => state.reset);
   const effectiveMotionTier = useEffectiveMotionTier();
 
   return (
@@ -85,15 +87,15 @@ export const SettingsPage = ({ onSelectWallpaper, wallpaperErrorMessage }: Setti
                 <p className="setting-row__hint">默认使用内置夜景；也可以选用本地图片，任何设置都不会遮挡播放控制。</p>
               </div>
               <div className="wallpaper-actions">
-                <div className="wallpaper-preview" data-empty={wallpaperUrl ? "false" : "true"}>
-                  {wallpaperUrl ? <img alt="当前壁纸预览" src={wallpaperUrl} /> : <span>内置夜景</span>}
+                <div className="wallpaper-preview" data-empty={wallpaperPath ? "false" : "true"}>
+                  {wallpaperPath ? <img alt="当前壁纸预览" src={createBackgroundMediaUrl(wallpaperPath)} /> : <span>内置夜景</span>}
                 </div>
                 <div className="wallpaper-buttons">
                   <Button onClick={onSelectWallpaper} size="sm" variant="ghost">
                     <ImagePlus aria-hidden="true" size={15} />
                     选择图片
                   </Button>
-                  <Button disabled={!wallpaperUrl} onClick={clearWallpaper} size="sm" variant="quiet">
+                  <Button disabled={!wallpaperPath} onClick={resetWallpaper} size="sm" variant="quiet">
                     <RotateCcw aria-hidden="true" size={15} />
                     恢复默认
                   </Button>

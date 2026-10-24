@@ -22,11 +22,13 @@ export const createMediaProtocolAccess = () => {
   const access = createMediaAccessList();
 
   return {
+    /** 重新扫描时整体替换音频白名单。 */
     allowAudioFilePaths: (filePaths: readonly string[]): void => {
       access.allow("audio", filePaths);
     },
-    allowImageFilePaths: (filePaths: readonly string[]): void => {
-      access.allow("image", filePaths);
+    /** 封面与壁纸累加放行：选择壁纸不能把已放行的封面挤掉。 */
+    addImageFilePaths: (filePaths: readonly string[]): void => {
+      access.add("image", filePaths);
     },
     registerHandler: (): void => {
       protocol.handle(mediaProtocolScheme, async (request) => {

@@ -1,9 +1,10 @@
 import electron from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { BackgroundImageSelectionResult, DirectorySelectionResult } from "@arlhifi/shared";
+import type { AppSettings, BackgroundImageSelectionResult, DirectorySelectionResult } from "@arlhifi/shared";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { scanMusicDirectory } from "./music-scanner.js";
+import { mergeSettings, readSettings, writeSettings } from "./settings-store.js";
 
 const { app, BrowserWindow, dialog, ipcMain } = electron;
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -11,12 +12,17 @@ const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 const selectMusicDirectoryChannel = "library:select-music-directory";
 const scanMusicDirectoryChannel = "library:scan-music-directory";
 const selectBackgroundImageChannel = "settings:select-background-image";
+const loadSettingsChannel = "settings:load";
+const saveSettingsChannel = "settings:save";
 const mediaProtocolAccess = createMediaProtocolAccess();
+
 
 registerMediaProtocolPrivileges();
 
 const getActiveWindow = (): electron.BrowserWindow | null =>
   BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
+
+const getCoversDirectory = (): string => join(app.getPath("userData"), "covers");
 
 ipcMain.handle(selectMusicDirectoryChannel, async (): Promise<DirectorySelectionResult> => {
   const activeWindow = getActiveWindow();
@@ -37,10 +43,30 @@ ipcMain.handle(scanMusicDirectoryChannel, async (_event, directoryPath: unknown)
     throw new Error("A valid music directory path is required.");
   }
 
-  const tracks = await scanMusicDirectory(directoryPath);
+  const tracks = await scanMusicDirectory(directoryPath, { coversDirectory: getCoversDirectory() });
   mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
+  mediaProtocolAccess.addImageFilePaths(
+    tracks.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
+  );
 
   return tracks;
+});
+
+ipcMain.handle(loadSettingsChannel, async (): Promise<AppSettings> => {
+  const settings = await readSettings(app.getPath("userData"));
+
+  if (settings.backgroundImagePath) {
+    mediaProtocolAccess.addImageFilePaths([settings.backgroundImagePath]);
+  }
+
+  return settings;
+});
+
+ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSettings> => {
+  const settings = mergeSettings(next);
+  await writeSettings(app.getPath("userData"), settings);
+
+  return settings;
 });
 
 ipcMain.handle(selectBackgroundImageChannel, async (): Promise<BackgroundImageSelectionResult> => {
@@ -57,7 +83,7 @@ ipcMain.handle(selectBackgroundImageChannel, async (): Promise<BackgroundImageSe
     return { canceled: true, filePath: null };
   }
 
-  mediaProtocolAccess.allowImageFilePaths([filePath]);
+  mediaProtocolAccess.addImageFilePaths([filePath]);
 
   return { canceled: false, filePath };
 });

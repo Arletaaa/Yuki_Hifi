@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { AppSettings } from "@arlhifi/shared";
 
 const MIN_DIM = 0;
 const MAX_DIM = 60;
@@ -10,26 +11,32 @@ const clamp = (value: number, min: number, max: number): number =>
 
 interface WallpaperStore {
   readonly blur: number;
-  readonly clearWallpaper: () => void;
   readonly dim: number;
+  readonly hydrate: (settings: AppSettings) => void;
+  /** 壁纸源文件路径；渲染层通过受控媒体协议转成 URL。 */
+  readonly path: string | null;
+  readonly reset: () => void;
   readonly setBlur: (blur: number) => void;
   readonly setDim: (dim: number) => void;
-  readonly setWallpaper: (url: string) => void;
-  readonly url: string | null;
+  readonly setPath: (path: string) => void;
 }
 
-/**
- * Session-only: the chosen wallpaper is not persisted yet (settings persistence lands in S5).
- */
 export const useWallpaperStore = create<WallpaperStore>()((set) => ({
-  url: null,
+  path: null,
   dim: 34,
   blur: 2,
-  setWallpaper: (url) => {
-    set({ url });
+  hydrate: (settings) => {
+    set({
+      path: settings.backgroundImagePath,
+      dim: settings.wallpaperDim,
+      blur: settings.wallpaperBlur
+    });
   },
-  clearWallpaper: () => {
-    set({ url: null });
+  setPath: (path) => {
+    set({ path });
+  },
+  reset: () => {
+    set({ path: null });
   },
   setDim: (dim) => {
     set({ dim: clamp(dim, MIN_DIM, MAX_DIM) });

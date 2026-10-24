@@ -1,5 +1,6 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+﻿import { useEffect, useRef, type CSSProperties } from "react";
 import { useEffectiveMotionTier } from "../hooks/use-app-preferences";
+import { createBackgroundMediaUrl } from "@arlhifi/shared";
 import { useWallpaperStore } from "../store/wallpaper-store";
 
 interface Star {
@@ -46,7 +47,7 @@ const buildings: readonly { readonly height: number; readonly width: number; rea
 
 /** 内置夜景壁纸：无版权依赖，颜色随主题切换，丰富动效档支持指针视差。 */
 export const BackgroundScene = () => {
-  const url = useWallpaperStore((state) => state.url);
+  const wallpaperPath = useWallpaperStore((state) => state.path);
   const dim = useWallpaperStore((state) => state.dim);
   const blur = useWallpaperStore((state) => state.blur);
   const motionTier = useEffectiveMotionTier();
@@ -94,8 +95,11 @@ export const BackgroundScene = () => {
 
   return (
     <div aria-hidden="true" className="background" ref={containerRef} style={style}>
-      {url ? (
-        <div className="background__wallpaper" style={{ backgroundImage: `url("${url}")` }} />
+      {wallpaperPath ? (
+        <div
+          className="background__wallpaper"
+          style={{ backgroundImage: `url("${createBackgroundMediaUrl(wallpaperPath)}")` }}
+        />
       ) : (
         <svg className="background__art" preserveAspectRatio="xMidYMax slice" viewBox="0 0 1440 900">
           <defs>

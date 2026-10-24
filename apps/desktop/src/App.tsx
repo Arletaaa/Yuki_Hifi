@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { createBackgroundMediaUrl, getSelectedDirectoryPath } from "@arlhifi/shared";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { getSelectedDirectoryPath } from "@arlhifi/shared";
 import { AppRail, type PageId } from "./components/app-rail";
 import { BackgroundScene } from "./components/background-scene";
 import { LibraryPage, type LibraryScanStatus } from "./components/library-page";
@@ -14,9 +14,11 @@ import {
   isScenePreviewRequested
 } from "./dev/demo-params";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
+import { useSaveSettings } from "./hooks/use-settings-sync";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
 import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
+import { useSettingsStore } from "./store/settings-store";
 import { useWallpaperStore } from "./store/wallpaper-store";
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
@@ -41,7 +43,9 @@ export const App = () => {
   const playTrack = usePlayerStore((state) => state.playTrack);
   const removeFromQueue = usePlayerStore((state) => state.removeFromQueue);
   const clearQueue = usePlayerStore((state) => state.clearQueue);
-  const setWallpaper = useWallpaperStore((state) => state.setWallpaper);
+  const setWallpaperPath = useWallpaperStore((state) => state.setPath);
+  const hydrateSettings = useSettingsStore((state) => state.hydrate);
+  const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
 
   // 场景需要"第几张 CD 是收藏"，而不是 id：把收藏映射成曲库下标。
   const favoriteIndices = useMemo(() => {
@@ -55,6 +59,44 @@ export const App = () => {
       return indices;
     }, []);
   }, [favorites, library]);
+
+  const scanDirectoryRef = useRef<(path: string) => Promise<void>>(async () => {});
+
+  useSaveSettings(directoryPath);
+
+  // 启动时读取一次 settings.json：恢复主题、动效、音量、收藏、壁纸与上次目录。
+  useEffect(() => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void api.loadSettings().then((settings) => {
+      if (cancelled) {
+        return;
+      }
+
+      hydrateSettings(settings);
+      hydrateWallpaper(settings);
+      usePlayerStore.setState({ volume: settings.volume, favorites: settings.favorites });
+
+      if (settings.musicDirectory) {
+        setDirectoryPath(settings.musicDirectory);
+        void scanDirectoryRef.current(settings.musicDirectory);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateSettings, hydrateWallpaper]);
+
+  useEffect(() => {
+    scanDirectoryRef.current = scanDirectory;
+  });
 
   const scanDirectory = async (nextDirectoryPath: string): Promise<void> => {
     const api = window.arltHifiDesktop;
@@ -131,7 +173,7 @@ export const App = () => {
         return;
       }
 
-      setWallpaper(createBackgroundMediaUrl(result.filePath));
+      setWallpaperPath(result.filePath);
       setWallpaperErrorMessage(null);
     } catch (error) {
       setWallpaperErrorMessage(getErrorMessage(error, "选择背景图片失败。"));

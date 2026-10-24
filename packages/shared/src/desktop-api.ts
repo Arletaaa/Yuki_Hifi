@@ -1,4 +1,4 @@
-import type { Track } from "./types.js";
+import type { AppSettings, Track } from "./types.js";
 
 export const mediaProtocolScheme = "arlt-hifi-media";
 
@@ -30,10 +30,16 @@ export interface ArltHifiDesktopApi {
   readonly selectMusicDirectory: () => Promise<DirectorySelectionResult>;
   readonly scanMusicDirectory: (directoryPath: string) => Promise<readonly Track[]>;
   readonly selectBackgroundImage: () => Promise<BackgroundImageSelectionResult>;
+  readonly loadSettings: () => Promise<AppSettings>;
+  readonly saveSettings: (settings: AppSettings) => Promise<AppSettings>;
 }
 
 export const createTrackMediaUrl = (track: Track): string => {
   return `${mediaProtocolScheme}://audio/${encodeURIComponent(track.filePath)}`;
+};
+
+export const createCoverMediaUrl = (coverPath: string): string => {
+  return `${mediaProtocolScheme}://image/${encodeURIComponent(coverPath)}`;
 };
 
 export const createBackgroundMediaUrl = (filePath: string): string => {

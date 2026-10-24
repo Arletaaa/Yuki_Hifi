@@ -1,4 +1,4 @@
-import { getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
+﻿import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { DEMO_DIRECTORY, getDemoQuery } from "./demo-params";
@@ -51,7 +51,9 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   platform: "win32",
   selectMusicDirectory: async () => ({ canceled: false, directoryPath: DEMO_DIRECTORY }),
   scanMusicDirectory: async () => demoTracks,
-  selectBackgroundImage: async () => ({ canceled: true, filePath: null })
+  selectBackgroundImage: async () => ({ canceled: true, filePath: null }),
+  loadSettings: async () => ({ ...defaultAppSettings }),
+  saveSettings: async (settings) => settings
 });
 
 /**

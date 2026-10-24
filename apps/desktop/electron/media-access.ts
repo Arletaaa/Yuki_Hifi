@@ -49,6 +49,8 @@ export const resolveMediaRequest = (requestUrl: string): ResolvedMediaRequest | 
 };
 
 export interface MediaAccessList {
+  /** 替换该类型的整个白名单（扫描结果用）。 */
+  readonly add: (kind: MediaKind, filePaths: readonly string[]) => void;
   readonly allow: (kind: MediaKind, filePaths: readonly string[]) => void;
   readonly has: (kind: MediaKind, filePath: string) => boolean;
 }
@@ -64,6 +66,15 @@ export const createMediaAccessList = (): MediaAccessList => {
     allow: (kind, filePaths) => {
       const target = allowedPaths[kind];
       target.clear();
+
+      for (const filePath of filePaths) {
+        if (isSupportedMediaFile(kind, filePath)) {
+          target.add(filePath);
+        }
+      }
+    },
+    add: (kind, filePaths) => {
+      const target = allowedPaths[kind];
 
       for (const filePath of filePaths) {
         if (isSupportedMediaFile(kind, filePath)) {

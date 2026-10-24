@@ -34,7 +34,7 @@
 - [x] S2R-0 场景技术 spike（60 张 56fps / 240 张 42fps；three 全量落在 220.9 kB gzip 懒加载 chunk）
 - [x] S2R-1a 性能与虚拟化（架子全局实例化 + CD 按 Bay 虚拟化：240/500 张均为 13 draw calls、挂载 3 段）
 - [x] S3 领域模型 + 收藏（store 拆 library/queue/playback 切片；`Track` 增加 `coverPath`/`metadataSource`；收藏与队列解耦；53 个用例）
-- [ ] S5 扫描 / 元数据 / 封面 / 持久化
+- [x] S5 扫描 / 元数据 / 封面 / 持久化（music-metadata + 封面缓存 + settings.json + 搜索排序；70 个桌面用例）
 - [ ] S6 HiFi 信息诚实化
 - [ ] S4 播放链路
 - [ ] S2R-1 长廊与生长
