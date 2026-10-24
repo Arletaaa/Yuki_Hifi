@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffectiveMotionTier } from "../hooks/use-app-preferences";
 import { useWallpaperStore } from "../store/wallpaper-store";
 
 interface Star {
@@ -10,10 +11,14 @@ interface Star {
 }
 
 interface SceneStyle extends CSSProperties {
+  readonly "--parallax-x": string;
+  readonly "--parallax-y": string;
   readonly "--veil-bottom": string;
   readonly "--veil-top": string;
   readonly "--wallpaper-blur": string;
 }
+
+const PARALLAX_RANGE = 6;
 
 const stars: readonly Star[] = Array.from({ length: 52 }, (_unused, index) => {
   const x = ((index * 173.7) % 100) / 100;
@@ -39,20 +44,56 @@ const buildings: readonly { readonly height: number; readonly width: number; rea
   { x: 1320, width: 46, height: 128 }
 ];
 
-/** 内置夜景壁纸：无版权依赖，颜色随主题切换。 */
+/** 内置夜景壁纸：无版权依赖，颜色随主题切换，丰富动效档支持指针视差。 */
 export const BackgroundScene = () => {
   const url = useWallpaperStore((state) => state.url);
   const dim = useWallpaperStore((state) => state.dim);
   const blur = useWallpaperStore((state) => state.blur);
+  const motionTier = useEffectiveMotionTier();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container || motionTier !== "rich") {
+      return;
+    }
+
+    let frame = 0;
+
+    const handlePointerMove = (event: PointerEvent): void => {
+      if (event.pointerType !== "mouse") {
+        return;
+      }
+
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const x = (event.clientX / window.innerWidth - 0.5) * 2;
+        const y = (event.clientY / window.innerHeight - 0.5) * 2;
+
+        container.style.setProperty("--parallax-x", `${(-x * PARALLAX_RANGE).toFixed(2)}px`);
+        container.style.setProperty("--parallax-y", `${(-y * PARALLAX_RANGE * 0.6).toFixed(2)}px`);
+      });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", handlePointerMove);
+    };
+  }, [motionTier]);
 
   const style: SceneStyle = {
+    "--parallax-x": "0px",
+    "--parallax-y": "0px",
     "--veil-top": `${(0.1 + dim * 0.005).toFixed(3)}`,
     "--veil-bottom": `${(0.35 + dim * 0.006).toFixed(3)}`,
     "--wallpaper-blur": `${blur}px`
   };
 
   return (
-    <div aria-hidden="true" className="background" style={style}>
+    <div aria-hidden="true" className="background" ref={containerRef} style={style}>
       {url ? (
         <div className="background__wallpaper" style={{ backgroundImage: `url("${url}")` }} />
       ) : (

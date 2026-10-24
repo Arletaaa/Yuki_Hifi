@@ -40,6 +40,6 @@ export const useApplyPreferences = (): void => {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme;
-    root.dataset.motion = motionTier === "off" ? "off" : "on";
+    root.dataset.motion = motionTier;
   }, [motionTier, theme]);
 };

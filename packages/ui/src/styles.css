@@ -106,6 +106,7 @@
 [data-motion="off"] *,
 [data-motion="off"] *::before,
 [data-motion="off"] *::after {
+  animation-delay: 0ms !important;
   animation-duration: 1ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 1ms !important;
@@ -319,6 +320,12 @@
   cursor: grabbing;
 }
 
+.al-knob:hover .al-knob__dial,
+.al-knob:focus-visible .al-knob__dial {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 .al-knob__dial {
   position: absolute;
   inset: 6px;
@@ -327,6 +334,12 @@
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.28), transparent 58%),
     rgba(46, 52, 72, 0.95);
+}
+
+.al-knob__dial {
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
 }
 
 [data-theme="light"] .al-knob__dial {

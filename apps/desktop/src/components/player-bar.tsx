@@ -1,7 +1,7 @@
 import { AlertCircle, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
+import type { PlaybackMode } from "@arlhifi/shared";
 import { formatBitDepth, formatDuration, formatSampleRate, getAudioFormatLabel, getQualityLabel } from "@arlhifi/shared";
 import { IconButton, Knob } from "@arlhifi/ui";
-import type { PlaybackMode } from "@arlhifi/shared";
 import { useEffectiveMotionTier } from "../hooks/use-app-preferences";
 import { usePlayerStore } from "../store/player-store";
 import { VinylRecord } from "./vinyl-record";
@@ -14,7 +14,7 @@ const getProgressPercent = (positionSeconds: number, durationSeconds: number): n
   return Math.min(100, Math.max(0, (positionSeconds / durationSeconds) * 100));
 };
 
-const modeMeta: Record<PlaybackMode, { readonly label: string; readonly icon: typeof Repeat }> = {
+const modeMeta: Record<PlaybackMode, { readonly icon: typeof Repeat; readonly label: string }> = {
   sequential: { label: "顺序播放", icon: Repeat },
   "repeat-one": { label: "单曲循环", icon: Repeat1 },
   shuffle: { label: "随机播放", icon: Shuffle }
@@ -43,7 +43,6 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
   const progressPercent = getProgressPercent(positionSeconds, durationSeconds);
   const ModeIcon = modeMeta[playbackMode].icon;
   const formatLabel = currentTrack ? getAudioFormatLabel(currentTrack.filePath) : "—";
-  const qualityLabel = currentTrack ? getQualityLabel(currentTrack.quality) : "";
 
   return (
     <footer className="bar">
@@ -54,7 +53,7 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
           spin={isPlaying && motionTier === "rich"}
           title={currentTrack?.title ?? "未选择曲目"}
         />
-        <div className="bar__meta">
+        <div className="bar__meta" key={currentTrack?.id ?? "idle"}>
           <p className="bar__title">{currentTrack?.title ?? "未选择曲目"}</p>
           <p className="bar__subtitle">
             {currentTrack ? `${currentTrack.artist} · ${currentTrack.album}` : "从音乐库选择一首本地曲目开始"}
@@ -104,9 +103,11 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
             aria-valuemin={0}
             aria-valuenow={positionSeconds}
             className="bar__track"
+            data-playing={isPlaying ? "true" : "false"}
             role="progressbar"
           >
             <span className="bar__track-fill" style={{ width: `${progressPercent}%` }} />
+            <span className="bar__track-head" style={{ left: `${progressPercent}%` }} />
           </div>
           <span className="bar__time">{formatDuration(durationSeconds)}</span>
         </div>
@@ -117,7 +118,7 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
           <span className="signal__format">{formatLabel}</span>
           <span className="signal__value">{currentTrack ? formatSampleRate(currentTrack.sampleRateHz) : "—"}</span>
           <span className="signal__value">{currentTrack ? formatBitDepth(currentTrack.bitDepth) : "—"}</span>
-          <span className="signal__quality">{qualityLabel}</span>
+          <span className="signal__quality">{currentTrack ? getQualityLabel(currentTrack.quality) : ""}</span>
         </div>
         <div className="bar__volume">
           <Knob label="音量" onChange={setVolume} value={volume} />

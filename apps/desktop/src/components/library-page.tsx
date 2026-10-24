@@ -1,10 +1,19 @@
+import type { CSSProperties } from "react";
 import { AlertTriangle, Disc3, Loader2, RefreshCw } from "lucide-react";
-import { formatDuration, getAudioFormatLabel, type Track } from "@arlhifi/shared";
-import { Button, IconButton, cn } from "@arlhifi/ui";
-import { CoverArt } from "./cover-art";
+import type { Track } from "@arlhifi/shared";
+import { Button, IconButton } from "@arlhifi/ui";
 import { EmptyState } from "./empty-state";
+import { TrackListHead, TrackRow } from "./track-row";
 
 export type LibraryScanStatus = "idle" | "selecting" | "scanning" | "success" | "empty" | "error";
+
+interface RowStyle extends CSSProperties {
+  readonly "--row-index": number;
+}
+
+const rowStyle = (index: number): RowStyle => ({ "--row-index": Math.min(index, 12) });
+
+const skeletonRows = Array.from({ length: 8 }, (_unused, index) => index);
 
 const emptyCopy: Record<LibraryScanStatus, string> = {
   idle: "选择一个本地音乐文件夹，扫描 flac / wav / mp3 / m4a / ogg 后会在这里列出曲目。",
@@ -14,6 +23,29 @@ const emptyCopy: Record<LibraryScanStatus, string> = {
   empty: "这个目录里没有发现支持的音频文件，可以换一个文件夹再试。",
   error: "扫描时遇到问题，请确认文件夹仍然存在且应用有读取权限。"
 };
+
+const LibrarySkeleton = () => (
+  <div aria-busy="true" aria-label="正在扫描目录" className="track-list">
+    <TrackListHead />
+    <div className="track-list__body">
+      {skeletonRows.map((row) => (
+        <div className="track-grid skeleton-row" key={`skeleton-${row}`} style={rowStyle(row)}>
+          <span className="skeleton skeleton--index" />
+          <span className="skeleton-row__main">
+            <span className="skeleton skeleton--cover" />
+            <span className="skeleton-row__text">
+              <span className="skeleton skeleton--title" />
+              <span className="skeleton skeleton--artist" />
+            </span>
+          </span>
+          <span className="skeleton skeleton--album" />
+          <span className="skeleton skeleton--badge" />
+          <span className="skeleton skeleton--time" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export interface LibraryPageProps {
   readonly currentTrackId: string | null;
@@ -51,11 +83,7 @@ export const LibraryPage = ({
         </div>
         <div className="page__actions">
           <span className="count-chip">{tracks.length} 首</span>
-          <IconButton
-            disabled={!directoryPath || isBusy}
-            label="重新扫描当前目录"
-            onClick={onRefresh}
-          >
+          <IconButton disabled={!directoryPath || isBusy} label="重新扫描当前目录" onClick={onRefresh}>
             <RefreshCw aria-hidden="true" size={16} />
           </IconButton>
           <Button disabled={isBusy} onClick={onSelectDirectory} variant="primary">
@@ -77,60 +105,28 @@ export const LibraryPage = ({
             title="扫描失败"
           />
         ) : isBusy && !hasTracks ? (
-          <EmptyState
-            copy={emptyCopy[scanStatus]}
-            icon={<Loader2 className="spin" size={26} strokeWidth={1.5} />}
-            title={scanStatus === "selecting" ? "选择文件夹…" : "正在扫描…"}
-          />
+          scanStatus === "scanning" ? (
+            <LibrarySkeleton />
+          ) : (
+            <EmptyState
+              copy={emptyCopy.selecting}
+              icon={<Loader2 className="spin" size={26} strokeWidth={1.5} />}
+              title="选择文件夹…"
+            />
+          )
         ) : hasTracks ? (
           <div className="track-list">
-            <div className="track-grid track-list__head">
-              <span>#</span>
-              <span>曲目</span>
-              <span>专辑</span>
-              <span>格式</span>
-              <span className="is-right">时长</span>
-            </div>
+            <TrackListHead />
             <div className="track-list__body">
-              {tracks.map((track, index) => {
-                const isCurrent = track.id === currentTrackId;
-
-                return (
-                  <button
-                    className={cn("track-grid", "track-row", isCurrent && "is-current")}
-                    key={track.id}
-                    onClick={() => {
-                      onPlayTrack(track);
-                    }}
-                    title={`${track.title} · ${track.filePath}`}
-                    type="button"
-                  >
-                    <span className="track-row__index">
-                      {isCurrent ? (
-                        <span aria-hidden="true" className="eq">
-                          <span />
-                          <span />
-                          <span />
-                        </span>
-                      ) : (
-                        String(index + 1).padStart(2, "0")
-                      )}
-                    </span>
-                    <span className="track-row__main">
-                      <CoverArt className="cover--row" seed={track.id} title={track.title} />
-                      <span className="track-row__text">
-                        <span className="track-row__title">{track.title}</span>
-                        <span className="track-row__artist">{track.artist}</span>
-                      </span>
-                    </span>
-                    <span className="track-row__album">{track.album}</span>
-                    <span className="track-row__format">
-                      <span className="badge">{getAudioFormatLabel(track.filePath)}</span>
-                    </span>
-                    <span className="track-row__duration is-right">{formatDuration(track.durationSeconds)}</span>
-                  </button>
-                );
-              })}
+              {tracks.map((track, index) => (
+                <TrackRow
+                  index={index}
+                  isCurrent={track.id === currentTrackId}
+                  key={track.id}
+                  onPlay={onPlayTrack}
+                  track={track}
+                />
+              ))}
             </div>
           </div>
         ) : (
