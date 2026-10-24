@@ -20,14 +20,24 @@ export interface DirectorySelectionResult {
   readonly directoryPath: string | null;
 }
 
+export interface BackgroundImageSelectionResult {
+  readonly canceled: boolean;
+  readonly filePath: string | null;
+}
+
 export interface ArltHifiDesktopApi {
   readonly platform: DesktopPlatform;
   readonly selectMusicDirectory: () => Promise<DirectorySelectionResult>;
   readonly scanMusicDirectory: (directoryPath: string) => Promise<readonly Track[]>;
+  readonly selectBackgroundImage: () => Promise<BackgroundImageSelectionResult>;
 }
 
 export const createTrackMediaUrl = (track: Track): string => {
   return `${mediaProtocolScheme}://audio/${encodeURIComponent(track.filePath)}`;
+};
+
+export const createBackgroundMediaUrl = (filePath: string): string => {
+  return `${mediaProtocolScheme}://image/${encodeURIComponent(filePath)}`;
 };
 
 export const getSelectedDirectoryPath = (result: DirectorySelectionResult): string | null => {

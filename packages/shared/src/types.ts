@@ -1,6 +1,8 @@
-export type AudioQuality = "unknown" | "lossless" | "hi-res";
+export type AudioQuality = "unknown" | "lossless" | "lossy" | "hi-res";
 
 export type PlaybackStatus = "idle" | "playing" | "paused";
+
+export type PlaybackMode = "sequential" | "repeat-one" | "shuffle";
 
 export interface Track {
   readonly id: string;
@@ -19,6 +21,7 @@ export interface PlayerSnapshot {
   readonly status: PlaybackStatus;
   readonly currentTrack: Track | null;
   readonly queue: readonly Track[];
+  readonly playbackMode: PlaybackMode;
   readonly volume: number;
   readonly positionSeconds: number;
   readonly durationSeconds: number;

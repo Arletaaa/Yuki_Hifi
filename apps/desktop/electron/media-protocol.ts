@@ -1,6 +1,6 @@
 import electron from "electron";
 import { pathToFileURL } from "node:url";
-import { isSupportedAudioFile } from "./music-scanner.js";
+import { createMediaAccessList, resolveMediaRequest } from "./media-access.js";
 
 const { net, protocol } = electron;
 
@@ -19,29 +19,24 @@ export const registerMediaProtocolPrivileges = (): void => {
 };
 
 export const createMediaProtocolAccess = () => {
-  const allowedAudioFilePaths = new Set<string>();
+  const access = createMediaAccessList();
 
   return {
     allowAudioFilePaths: (filePaths: readonly string[]): void => {
-      allowedAudioFilePaths.clear();
-
-      for (const filePath of filePaths) {
-        if (isSupportedAudioFile(filePath)) {
-          allowedAudioFilePaths.add(filePath);
-        }
-      }
+      access.allow("audio", filePaths);
+    },
+    allowImageFilePaths: (filePaths: readonly string[]): void => {
+      access.allow("image", filePaths);
     },
     registerHandler: (): void => {
       protocol.handle(mediaProtocolScheme, async (request) => {
-        const requestUrl = new URL(request.url);
-        const encodedFilePath = requestUrl.pathname.replace(/^\//, "");
-        const filePath = decodeURIComponent(encodedFilePath);
+        const resolved = resolveMediaRequest(request.url);
 
-        if (!allowedAudioFilePaths.has(filePath) || !isSupportedAudioFile(filePath)) {
-          return new Response("Audio file is not available for playback.", { status: 403 });
+        if (!resolved || !access.has(resolved.kind, resolved.filePath)) {
+          return new Response("Media file is not available.", { status: 403 });
         }
 
-        return net.fetch(pathToFileURL(filePath).toString());
+        return net.fetch(pathToFileURL(resolved.filePath).toString());
       });
     }
   };

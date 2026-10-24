@@ -151,6 +151,8 @@
 | 生产运行 | `pnpm start` | 打开生产构建窗口 |
 | 真机开发 | `pnpm dev` | 需确保 `ELECTRON_RUN_AS_NODE` 未泄漏 |
 | 渲染层截图 | 本地静态服务 + Chrome `--headless --screenshot` | 用于设计核对与回归对比 |
+| 渲染层预览 | `pnpm dev:web` + `?demo=1&track=1&page=queue&theme=light` | 开发模式注入示例曲库（`src/dev/`），生产包不含该代码 |
+| CDP 截图 | `.verify/tools/capture.mjs <url> <out.png> [w] [h]` | 等待渲染完成后截图并回显页面控制台错误 |
 | 手工验收 | 按 S4/S5 的交互清单逐条点 | 播放、seek、模式、持久化 |
 
 > 环境说明：当前会话的沙箱禁止子进程通过管道通信，`vitest`（esbuild）与 Chromium 多进程都需要放宽权限才能运行；截图与测试命令需要单次提权。此限制只影响本会话，不影响项目本身的规范命令。

@@ -1,7 +1,7 @@
 import electron from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DirectorySelectionResult } from "@arlhifi/shared";
+import type { BackgroundImageSelectionResult, DirectorySelectionResult } from "@arlhifi/shared";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { scanMusicDirectory } from "./music-scanner.js";
 
@@ -10,12 +10,16 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 const selectMusicDirectoryChannel = "library:select-music-directory";
 const scanMusicDirectoryChannel = "library:scan-music-directory";
+const selectBackgroundImageChannel = "settings:select-background-image";
 const mediaProtocolAccess = createMediaProtocolAccess();
 
 registerMediaProtocolPrivileges();
 
+const getActiveWindow = (): electron.BrowserWindow | null =>
+  BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
+
 ipcMain.handle(selectMusicDirectoryChannel, async (): Promise<DirectorySelectionResult> => {
-  const activeWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const activeWindow = getActiveWindow();
   const options: electron.OpenDialogOptions = {
     title: "选择音乐文件夹",
     properties: ["openDirectory"]
@@ -39,14 +43,34 @@ ipcMain.handle(scanMusicDirectoryChannel, async (_event, directoryPath: unknown)
   return tracks;
 });
 
+ipcMain.handle(selectBackgroundImageChannel, async (): Promise<BackgroundImageSelectionResult> => {
+  const activeWindow = getActiveWindow();
+  const options: electron.OpenDialogOptions = {
+    title: "选择背景图片",
+    properties: ["openFile"],
+    filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp"] }]
+  };
+  const result = activeWindow ? await dialog.showOpenDialog(activeWindow, options) : await dialog.showOpenDialog(options);
+  const filePath = result.filePaths[0] ?? null;
+
+  if (result.canceled || !filePath) {
+    return { canceled: true, filePath: null };
+  }
+
+  mediaProtocolAccess.allowImageFilePaths([filePath]);
+
+  return { canceled: false, filePath };
+});
+
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 1024,
     minHeight: 680,
-    backgroundColor: "#10131f",
+    backgroundColor: "#0a0d16",
     title: "Arlt HiFi Player",
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(currentDir, "preload.js"),
       contextIsolation: true,

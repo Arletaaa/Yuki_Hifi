@@ -1,6 +1,7 @@
 import { create, type StateCreator } from "zustand";
 import { createStore } from "zustand/vanilla";
-import { initialPlayerSnapshot, mockTrack, type PlayerSnapshot, type Track } from "@arlhifi/shared";
+import { initialPlayerSnapshot, type PlayerSnapshot, type Track } from "@arlhifi/shared";
+import { getNextTrackIndex, getPreviousTrackIndex } from "./queue-logic";
 
 interface PlayerActions {
   readonly loadLibrary: (library: readonly Track[]) => void;
@@ -8,7 +9,7 @@ interface PlayerActions {
   readonly togglePlayback: () => void;
   readonly playNext: () => void;
   readonly playPrevious: () => void;
-  readonly loadMockTrack: () => void;
+  readonly cyclePlaybackMode: () => void;
   readonly setVolume: (volume: number) => void;
   readonly setPositionSeconds: (positionSeconds: number) => void;
   readonly setDurationSeconds: (durationSeconds: number) => void;
@@ -32,11 +33,7 @@ const getPlayableQueue = (state: Pick<PlayerStore, "queue" | "library">): readon
     return state.queue;
   }
 
-  if (state.library.length > 0) {
-    return state.library;
-  }
-
-  return [mockTrack];
+  return state.library;
 };
 
 const getTrackIndex = (queue: readonly Track[], currentTrack: Track | null): number => {
@@ -47,7 +44,7 @@ const getTrackIndex = (queue: readonly Track[], currentTrack: Track | null): num
   return queue.findIndex((track) => track.id === currentTrack.id);
 };
 
-const createPlayerStoreState: StateCreator<PlayerStore> = (set, get) => ({
+const createPlayerStoreState: StateCreator<PlayerStore> = (set) => ({
   ...createInitialPlayerState(),
   loadLibrary: (library) => {
     const nextLibrary = [...library];
@@ -59,7 +56,7 @@ const createPlayerStoreState: StateCreator<PlayerStore> = (set, get) => ({
 
       return {
         library: nextLibrary,
-        queue: nextLibrary.length > 0 ? nextLibrary : [mockTrack],
+        queue: nextLibrary,
         currentTrack: currentTrackIsInLibrary ? state.currentTrack : null,
         positionSeconds: currentTrackIsInLibrary ? state.positionSeconds : 0,
         durationSeconds: currentTrackIsInLibrary ? state.durationSeconds : 0,
@@ -85,14 +82,17 @@ const createPlayerStoreState: StateCreator<PlayerStore> = (set, get) => ({
   togglePlayback: () => {
     set((state) => {
       const queue = getPlayableQueue(state);
-      const nextTrack = state.currentTrack ?? queue[0] ?? mockTrack;
-      const nextStatus = state.status === "playing" ? "paused" : "playing";
+      const nextTrack = state.currentTrack ?? queue[0];
+
+      if (!nextTrack) {
+        return { status: "idle" as const };
+      }
 
       return {
         currentTrack: nextTrack,
         queue,
         playbackErrorMessage: null,
-        status: nextStatus
+        status: state.status === "playing" ? ("paused" as const) : ("playing" as const)
       };
     });
   },
@@ -100,15 +100,25 @@ const createPlayerStoreState: StateCreator<PlayerStore> = (set, get) => ({
     set((state) => {
       const queue = getPlayableQueue(state);
       const currentIndex = getTrackIndex(queue, state.currentTrack);
-      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % queue.length : 0;
+      const nextIndex = getNextTrackIndex({
+        currentIndex,
+        length: queue.length,
+        mode: state.playbackMode,
+        random: Math.random
+      });
+      const nextTrack = queue[nextIndex];
+
+      if (!nextTrack) {
+        return { status: "idle" as const };
+      }
 
       return {
-        currentTrack: queue[nextIndex] ?? mockTrack,
+        currentTrack: nextTrack,
         queue,
         positionSeconds: 0,
-        durationSeconds: queue[nextIndex]?.durationSeconds ?? 0,
+        durationSeconds: nextTrack.durationSeconds,
         playbackErrorMessage: null,
-        status: "playing"
+        status: "playing" as const
       };
     });
   },
@@ -116,27 +126,32 @@ const createPlayerStoreState: StateCreator<PlayerStore> = (set, get) => ({
     set((state) => {
       const queue = getPlayableQueue(state);
       const currentIndex = getTrackIndex(queue, state.currentTrack);
-      const previousIndex = currentIndex >= 0 ? (currentIndex - 1 + queue.length) % queue.length : 0;
+      const previousIndex = getPreviousTrackIndex(currentIndex, queue.length);
+      const previousTrack = queue[previousIndex];
+
+      if (!previousTrack) {
+        return { status: "idle" as const };
+      }
 
       return {
-        currentTrack: queue[previousIndex] ?? mockTrack,
+        currentTrack: previousTrack,
         queue,
         positionSeconds: 0,
-        durationSeconds: queue[previousIndex]?.durationSeconds ?? 0,
+        durationSeconds: previousTrack.durationSeconds,
         playbackErrorMessage: null,
-        status: "playing"
+        status: "playing" as const
       };
     });
   },
-  loadMockTrack: () => {
-    set({
-      currentTrack: mockTrack,
-      queue: [mockTrack],
-      positionSeconds: 0,
-      durationSeconds: mockTrack.durationSeconds,
-      playbackErrorMessage: null,
-      status: "paused"
-    });
+  cyclePlaybackMode: () => {
+    set((state) => ({
+      playbackMode:
+        state.playbackMode === "sequential"
+          ? "repeat-one"
+          : state.playbackMode === "repeat-one"
+            ? "shuffle"
+            : "sequential"
+    }));
   },
   setVolume: (volume) => {
     set({

@@ -1,177 +1,164 @@
-import { FolderSync, Headphones, Library, ListMusic, Settings } from "lucide-react";
-import type { CSSProperties } from "react";
 import { useState } from "react";
-import { getSelectedDirectoryPath } from "@arlhifi/shared";
-import { EmptyLibrary, type LibraryScanStatus } from "./components/empty-library";
-import { HifiPanel } from "./components/hifi-panel";
-import { MusicLibrary } from "./components/music-library";
+import { createBackgroundMediaUrl, getSelectedDirectoryPath } from "@arlhifi/shared";
+import { AppRail, type PageId } from "./components/app-rail";
+import { BackgroundScene } from "./components/background-scene";
+import { LibraryPage, type LibraryScanStatus } from "./components/library-page";
 import { PlayerBar } from "./components/player-bar";
+import { QueuePage } from "./components/queue-page";
+import { SettingsPage } from "./components/settings-page";
+import { getDemoDirectoryPath, getDemoInitialPage } from "./dev/demo-params";
+import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
 import { usePlayerStore } from "./store/player-store";
+import { useWallpaperStore } from "./store/wallpaper-store";
 
-const navItems = [
-  { label: "音乐库", icon: Library },
-  { label: "播放队列", icon: ListMusic },
-  { label: "设置", icon: Settings }
-] as const;
-
-type AmbientStyle = CSSProperties & {
-  readonly "--ambient-primary": string;
-  readonly "--ambient-secondary": string;
-  readonly "--ambient-x": string;
-  readonly "--ambient-y": string;
-};
-
-const getTrackSeed = (value: string): number =>
-  [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
-
-const getAmbientStyle = (trackId: string | null): AmbientStyle => {
-  const seed = trackId ? getTrackSeed(trackId) : 37;
-  const x = 42 + (seed % 28);
-  const y = 18 + (seed % 22);
-
-  return {
-    "--ambient-primary": seed % 2 === 0 ? "rgba(255, 132, 178, 0.28)" : "rgba(143, 201, 255, 0.28)",
-    "--ambient-secondary": seed % 3 === 0 ? "rgba(158, 232, 210, 0.24)" : "rgba(255, 132, 178, 0.2)",
-    "--ambient-x": `${x}%`,
-    "--ambient-y": `${y}%`
-  };
-};
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
 
 export const App = () => {
   useAudioPlayback();
+  useApplyPreferences();
 
-  const [selectedDirectoryPath, setSelectedDirectoryPath] = useState<string | null>(null);
-  const [directoryErrorMessage, setDirectoryErrorMessage] = useState<string | null>(null);
+  const [page, setPage] = useState<PageId>(() => getDemoInitialPage() ?? "library");
+  const [directoryPath, setDirectoryPath] = useState<string | null>(() => getDemoDirectoryPath());
   const [scanStatus, setScanStatus] = useState<LibraryScanStatus>("idle");
-  const libraryTracks = usePlayerStore((state) => state.library);
+  const [scanErrorMessage, setScanErrorMessage] = useState<string | null>(null);
+  const [wallpaperErrorMessage, setWallpaperErrorMessage] = useState<string | null>(null);
+
+  const library = usePlayerStore((state) => state.library);
+  const queue = usePlayerStore((state) => state.queue);
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id ?? null);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const playTrack = usePlayerStore((state) => state.playTrack);
+  const setWallpaper = useWallpaperStore((state) => state.setWallpaper);
 
-  const scanDirectory = async (directoryPath: string): Promise<void> => {
-    if (!window.arltHifiDesktop) {
-      setDirectoryErrorMessage("当前环境不支持扫描本地文件夹，请在 Electron 桌面应用中使用。");
+  const scanDirectory = async (nextDirectoryPath: string): Promise<void> => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      setScanErrorMessage("当前环境不支持扫描本地文件夹，请在 Electron 桌面应用中使用。");
       setScanStatus("error");
       return;
     }
 
     setScanStatus("scanning");
-    setDirectoryErrorMessage(null);
+    setScanErrorMessage(null);
 
     try {
-      const tracks = await window.arltHifiDesktop.scanMusicDirectory(directoryPath);
+      const tracks = await api.scanMusicDirectory(nextDirectoryPath);
       loadLibrary(tracks);
       setScanStatus(tracks.length > 0 ? "success" : "empty");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "扫描音乐文件夹失败。";
       loadLibrary([]);
-      setDirectoryErrorMessage(message);
+      setScanErrorMessage(getErrorMessage(error, "扫描音乐文件夹失败。"));
       setScanStatus("error");
     }
   };
 
   const handleSelectDirectory = async (): Promise<void> => {
-    if (!window.arltHifiDesktop) {
-      setDirectoryErrorMessage("当前环境不支持选择本地文件夹，请在 Electron 桌面应用中使用。");
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      setScanErrorMessage("当前环境不支持选择本地文件夹，请在 Electron 桌面应用中使用。");
       setScanStatus("error");
       return;
     }
 
     setScanStatus("selecting");
-    setDirectoryErrorMessage(null);
+    setScanErrorMessage(null);
 
     try {
-      const result = await window.arltHifiDesktop.selectMusicDirectory();
-      const directoryPath = getSelectedDirectoryPath(result);
+      const result = await api.selectMusicDirectory();
+      const selectedPath = getSelectedDirectoryPath(result);
 
-      if (!directoryPath) {
-        setScanStatus(libraryTracks.length > 0 ? "success" : selectedDirectoryPath ? "empty" : "idle");
+      if (!selectedPath) {
+        setScanStatus(library.length > 0 ? "success" : directoryPath ? "empty" : "idle");
         return;
       }
 
-      setSelectedDirectoryPath(directoryPath);
-      await scanDirectory(directoryPath);
+      setDirectoryPath(selectedPath);
+      await scanDirectory(selectedPath);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "选择音乐文件夹失败。";
-      setDirectoryErrorMessage(message);
+      setScanErrorMessage(getErrorMessage(error, "选择音乐文件夹失败。"));
       setScanStatus("error");
     }
   };
 
-  const hasTracks = libraryTracks.length > 0;
-  const isBusy = scanStatus === "selecting" || scanStatus === "scanning";
+  const handleRefresh = (): void => {
+    if (!directoryPath) {
+      return;
+    }
+
+    void scanDirectory(directoryPath);
+  };
+
+  const handleSelectWallpaper = async (): Promise<void> => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      setWallpaperErrorMessage("当前环境无法选择本地图片，请在 Electron 桌面应用中使用。");
+      return;
+    }
+
+    try {
+      const result = await api.selectBackgroundImage();
+
+      if (result.canceled || !result.filePath) {
+        return;
+      }
+
+      setWallpaper(createBackgroundMediaUrl(result.filePath));
+      setWallpaperErrorMessage(null);
+    } catch (error) {
+      setWallpaperErrorMessage(getErrorMessage(error, "选择背景图片失败。"));
+    }
+  };
 
   return (
-    <main className="app-shell" style={getAmbientStyle(currentTrackId)}>
-      <div className="app-layout">
-        <aside className="sidebar glass-panel">
-          <div className="brand">
-            <div className="brand-mark">
-              <Headphones aria-hidden="true" size={22} />
-            </div>
-            <div>
-              <h1 className="brand-title">Arlt HiFi</h1>
-              <p className="brand-subtitle">Local HiFi Player</p>
-            </div>
-          </div>
-
-          <nav aria-label="播放器导航" className="nav-list">
-            {navItems.map((item, index) => (
-              <button className={`nav-button${index === 0 ? " is-active" : ""}`} key={item.label} type="button">
-                <item.icon aria-hidden="true" size={18} />
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="playlist-card">
-            <p className="playlist-label">当前空间</p>
-            <p className="playlist-title">{hasTracks ? `${libraryTracks.length} 首本地曲目` : "等待导入音乐"}</p>
-          </div>
-        </aside>
-
-        <section className="content-shell">
-          <div className="content-panel glass-panel">
-            <div className="content-header">
-              <div>
-                <p className="eyebrow">Local HiFi Library</p>
-                <h2 className="page-title">音乐库</h2>
-              </div>
-              <button
-                className="primary-action"
-                disabled={isBusy}
-                onClick={() => {
-                  void handleSelectDirectory();
-                }}
-                type="button"
-              >
-                <FolderSync aria-hidden="true" size={17} />
-                {hasTracks ? "重新选择目录" : "选择目录"}
-              </button>
-            </div>
-            {hasTracks && selectedDirectoryPath ? (
-              <MusicLibrary
-                currentTrackId={currentTrackId}
-                directoryPath={selectedDirectoryPath}
-                onPlayTrack={playTrack}
-                tracks={libraryTracks}
-              />
-            ) : (
-              <EmptyLibrary
-                directoryPath={selectedDirectoryPath}
-                errorMessage={directoryErrorMessage}
-                onSelectDirectory={() => {
-                  void handleSelectDirectory();
-                }}
-                scanStatus={scanStatus}
-              />
-            )}
-          </div>
-        </section>
+    <div className="app">
+      <BackgroundScene />
+      <div className="app__grid">
+        <AppRail onNavigate={setPage} page={page} trackCount={library.length} />
+        <main className="app__main" key={page}>
+          {page === "library" ? (
+            <LibraryPage
+              currentTrackId={currentTrackId}
+              directoryPath={directoryPath}
+              errorMessage={scanErrorMessage}
+              onPlayTrack={playTrack}
+              onRefresh={handleRefresh}
+              onSelectDirectory={() => {
+                void handleSelectDirectory();
+              }}
+              scanStatus={scanStatus}
+              tracks={library}
+            />
+          ) : null}
+          {page === "queue" ? (
+            <QueuePage
+              currentTrackId={currentTrackId}
+              onGoToLibrary={() => {
+                setPage("library");
+              }}
+              onPlayTrack={playTrack}
+              queue={queue}
+            />
+          ) : null}
+          {page === "settings" ? (
+            <SettingsPage
+              onSelectWallpaper={() => {
+                void handleSelectWallpaper();
+              }}
+              wallpaperErrorMessage={wallpaperErrorMessage}
+            />
+          ) : null}
+        </main>
+        <PlayerBar
+          onOpenQueue={() => {
+            setPage("queue");
+          }}
+        />
       </div>
-      <PlayerBar />
-      <HifiPanel />
-    </main>
+    </div>
   );
 };

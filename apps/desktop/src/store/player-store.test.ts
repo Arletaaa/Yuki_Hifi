@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mockTrack, type Track } from "@arlhifi/shared";
+import type { Track } from "@arlhifi/shared";
 import { createInitialPlayerState, createPlayerStore } from "./player-store";
 
 const createTrack = (id: string, title: string): Track => ({
@@ -15,13 +15,13 @@ const createTrack = (id: string, title: string): Track => ({
 });
 
 describe("player store initial state", () => {
-  it("starts idle with an empty library and a mock queue", () => {
+  it("starts idle with an empty library and an empty queue", () => {
     const state = createInitialPlayerState();
 
     expect(state.library).toHaveLength(0);
+    expect(state.queue).toHaveLength(0);
     expect(state.status).toBe("idle");
     expect(state.currentTrack).toBeNull();
-    expect(state.queue).toHaveLength(1);
   });
 
   it("clones collections for each initial state", () => {
@@ -46,13 +46,13 @@ describe("player store actions", () => {
     expect(store.getState().status).toBe("idle");
   });
 
-  it("keeps the mock queue as fallback when loading an empty library", () => {
+  it("keeps an empty queue when loading an empty library", () => {
     const store = createPlayerStore();
 
     store.getState().loadLibrary([]);
 
     expect(store.getState().library).toHaveLength(0);
-    expect(store.getState().queue).toEqual([mockTrack]);
+    expect(store.getState().queue).toHaveLength(0);
   });
 
   it("plays a selected track from the library", () => {
@@ -80,6 +80,25 @@ describe("player store actions", () => {
     store.getState().togglePlayback();
 
     expect(store.getState().status).toBe("paused");
+  });
+
+  it("stays idle when there is nothing to play", () => {
+    const store = createPlayerStore();
+
+    store.getState().togglePlayback();
+
+    expect(store.getState().currentTrack).toBeNull();
+    expect(store.getState().status).toBe("idle");
+  });
+
+  it("does nothing when skipping with an empty queue", () => {
+    const store = createPlayerStore();
+
+    store.getState().playNext();
+    store.getState().playPrevious();
+
+    expect(store.getState().currentTrack).toBeNull();
+    expect(store.getState().status).toBe("idle");
   });
 
   it("moves to next and previous tracks in the queue", () => {
@@ -113,6 +132,34 @@ describe("player store actions", () => {
     store.getState().playPrevious();
 
     expect(store.getState().currentTrack).toEqual(second);
+  });
+
+  it("cycles playback mode through sequential, repeat-one and shuffle", () => {
+    const store = createPlayerStore();
+
+    expect(store.getState().playbackMode).toBe("sequential");
+
+    store.getState().cyclePlaybackMode();
+    expect(store.getState().playbackMode).toBe("repeat-one");
+
+    store.getState().cyclePlaybackMode();
+    expect(store.getState().playbackMode).toBe("shuffle");
+
+    store.getState().cyclePlaybackMode();
+    expect(store.getState().playbackMode).toBe("sequential");
+  });
+
+  it("keeps the same track when skipping in repeat-one mode", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first, second]);
+    store.getState().playTrack(first);
+    store.getState().cyclePlaybackMode();
+    store.getState().playNext();
+
+    expect(store.getState().currentTrack).toEqual(first);
   });
 
   it("clamps volume", () => {

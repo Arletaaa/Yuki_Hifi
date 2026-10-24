@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTrackMediaUrl, getSelectedDirectoryPath } from "./desktop-api.js";
+import { createBackgroundMediaUrl, createTrackMediaUrl, getSelectedDirectoryPath } from "./desktop-api.js";
 
 describe("desktop api helpers", () => {
   it("returns the selected directory path", () => {
@@ -25,5 +25,12 @@ describe("desktop api helpers", () => {
 
     expect(url).toMatch(/^arlt-hifi-media:\/\/audio\//);
     expect(url).not.toContain("file://");
+  });
+
+  it("creates background image URLs on the image host", () => {
+    const url = createBackgroundMediaUrl("D:\\Pictures\\night sky.webp");
+
+    expect(url).toMatch(/^arlt-hifi-media:\/\/image\//);
+    expect(url).toContain(encodeURIComponent("D:\\Pictures\\night sky.webp"));
   });
 });

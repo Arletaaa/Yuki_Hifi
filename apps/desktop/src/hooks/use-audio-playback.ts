@@ -85,13 +85,6 @@ export const useAudioPlayback = (): void => {
       return;
     }
 
-    if (currentTrack.filePath.startsWith("mock://")) {
-      if (status === "playing") {
-        setPlaybackError("请先从音乐库选择一首本地音频文件。");
-      }
-      return;
-    }
-
     if (loadedTrackIdRef.current !== currentTrack.id) {
       audio.src = createTrackMediaUrl(currentTrack);
       audio.currentTime = 0;

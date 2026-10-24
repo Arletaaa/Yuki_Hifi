@@ -1,10 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "@arlhifi/ui/styles.css";
+import "./styles/base.css";
+import "./styles/shell.css";
 import { App } from "./App";
-import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+
+// 开发预览：补齐 preload API 并注入示例曲库。先渲染再注入，避免首帧被动态导入阻塞。
+if (import.meta.env.DEV) {
+  void import("./dev/demo").then((module) => {
+    module.installDemoDesktopApi();
+  });
+}

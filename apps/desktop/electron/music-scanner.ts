@@ -1,17 +1,14 @@
 import { readdir } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import type { AudioQuality, Track } from "@arlhifi/shared";
+import { isSupportedAudioFile } from "./media-access.js";
 
-const supportedAudioExtensions = new Set([".flac", ".wav", ".mp3", ".m4a", ".ogg"]);
-
-export const isSupportedAudioFile = (filePath: string): boolean => {
-  return supportedAudioExtensions.has(extname(filePath).toLowerCase());
-};
+export { isSupportedAudioFile };
 
 export const createTrackFromFilePath = (filePath: string): Track => {
   const extension = extname(filePath).toLowerCase();
   const title = basename(filePath, extension).trim() || "Untitled";
-  const quality: AudioQuality = extension === ".flac" || extension === ".wav" ? "lossless" : "unknown";
+  const quality: AudioQuality = extension === ".flac" || extension === ".wav" ? "lossless" : "lossy";
 
   return {
     id: `file://${encodeURIComponent(filePath)}`,
@@ -20,8 +17,8 @@ export const createTrackFromFilePath = (filePath: string): Track => {
     album: "Unknown Album",
     durationSeconds: 0,
     quality,
-    sampleRateHz: quality === "lossless" ? 44100 : 0,
-    bitDepth: quality === "lossless" ? 16 : 0,
+    sampleRateHz: 0,
+    bitDepth: 0,
     filePath
   };
 };
