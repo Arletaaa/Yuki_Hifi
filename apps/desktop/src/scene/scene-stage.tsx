@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from "react";
+import type { Track } from "@arlhifi/shared";
 import { Button } from "@arlhifi/ui";
 import { sceneStats, useFrameRateSample } from "./perf";
 import { isWebGL2Available } from "./webgl";
@@ -9,11 +10,13 @@ export interface SceneStageProps {
   readonly autoSpin: boolean;
   readonly favoriteIndices: readonly number[];
   readonly onExit: () => void;
+  readonly onPlayTrack: (track: Track) => void;
   readonly trackCount: number;
+  readonly tracks: readonly Track[];
 }
 
 /** S2R-0 实验舞台：验证渲染成本、交互手感与降级路径；S2R-1 才接入正式导航。 */
-export const SceneStage = ({ autoSpin, favoriteIndices, onExit, trackCount }: SceneStageProps) => {
+export const SceneStage = ({ autoSpin, favoriteIndices, onExit, onPlayTrack, trackCount, tracks }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
   const sample = useFrameRateSample();
 
@@ -22,7 +25,13 @@ export const SceneStage = ({ autoSpin, favoriteIndices, onExit, trackCount }: Sc
       <div className="scene-stage__viewport">
         {supported ? (
           <Suspense fallback={<p className="scene-stage__loading">正在初始化渲染器…</p>}>
-            <CorridorScene autoSpin={autoSpin} favoriteIndices={favoriteIndices} trackCount={trackCount} />
+            <CorridorScene
+              autoSpin={autoSpin}
+              favoriteIndices={favoriteIndices}
+              onPlayTrack={onPlayTrack}
+              trackCount={trackCount}
+              tracks={tracks}
+            />
           </Suspense>
         ) : (
           <div className="scene-stage__fallback">

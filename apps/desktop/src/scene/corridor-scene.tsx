@@ -8,9 +8,13 @@ import {
   MathUtils,
   MeshStandardMaterial,
   Object3D,
-  PMREMGenerator
+  PMREMGenerator,
+  SRGBColorSpace,
+  Texture,
+  TextureLoader
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { createCoverMediaUrl, type Track } from "@arlhifi/shared";
 import { getSeedHue } from "../lib/seed";
 import {
   BAY_DEPTH,
@@ -33,8 +37,143 @@ const SHELF_HEIGHTS = [0.72, 1.22, 1.72];
 interface CorridorSceneProps {
   readonly autoSpin?: boolean;
   readonly favoriteIndices?: readonly number[];
+  readonly onPlayTrack: (track: Track) => void;
   readonly trackCount: number;
+  readonly tracks: readonly Track[];
 }
+
+const MAX_COVER_TEXTURES = 48;
+const coverTextureCache = new Map<string, Texture>();
+
+const loadCoverTexture = (coverPath: string): Promise<Texture> =>
+  new Promise((resolve, reject) => {
+    new TextureLoader().load(
+      createCoverMediaUrl(coverPath),
+      (texture) => {
+        texture.colorSpace = SRGBColorSpace;
+        texture.anisotropy = 4;
+        coverTextureCache.set(coverPath, texture);
+
+        if (coverTextureCache.size > MAX_COVER_TEXTURES) {
+          const oldestKey = coverTextureCache.keys().next().value;
+
+          if (oldestKey) {
+            coverTextureCache.get(oldestKey)?.dispose();
+            coverTextureCache.delete(oldestKey);
+          }
+        }
+
+        resolve(texture);
+      },
+      undefined,
+      reject
+    );
+  });
+
+const useCoverTexture = (coverPath: string | null): Texture | null => {
+  const invalidate = useThree((state) => state.invalidate);
+  const [texture, setTexture] = useState<Texture | null>(() =>
+    coverPath ? coverTextureCache.get(coverPath) ?? null : null
+  );
+
+  useEffect(() => {
+    if (!coverPath) {
+      setTexture(null);
+      return;
+    }
+
+    const cached = coverTextureCache.get(coverPath);
+
+    if (cached) {
+      setTexture(cached);
+      return;
+    }
+
+    let cancelled = false;
+
+    void loadCoverTexture(coverPath)
+      .then((loaded) => {
+        if (cancelled) {
+          return;
+        }
+
+        setTexture(loaded);
+        invalidate();
+      })
+      .catch(() => {
+        // 封面加载失败时保留纯色占位，不影响场景其余部分。
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coverPath, invalidate]);
+
+  return texture;
+};
+
+/** 当前 Bay 的 CD 用真实封面贴图绘制；更远的 Bay 仍是实例化色块。 */
+const CoverPlane = ({
+  index,
+  onPlay,
+  track
+}: {
+  readonly index: number;
+  readonly onPlay: (track: Track) => void;
+  readonly track: Track;
+}) => {
+  const texture = useCoverTexture(track.coverPath);
+  const { position, rotationY } = getSlotTransform(index);
+  const offset = DISC_OFFSET + 0.002;
+
+  return (
+    <mesh
+      onClick={(event) => {
+        event.stopPropagation();
+        onPlay(track);
+      }}
+      position={[
+        position[0] + Math.sin(rotationY) * offset,
+        position[1],
+        position[2] + Math.cos(rotationY) * offset
+      ]}
+      rotation={[0, rotationY, 0]}
+    >
+      <circleGeometry args={[DISC_RADIUS, 40]} />
+      {texture ? (
+        <meshStandardMaterial map={texture} metalness={0.3} roughness={0.32} toneMapped={false} />
+      ) : (
+        // 没有封面时与实例化盘面同色同材质，肉眼保持连续，同时保留点击区域。
+        <meshStandardMaterial
+          color={`hsl(${getSeedHue(track.id)}, 62%, 56%)`}
+          metalness={0.35}
+          roughness={0.3}
+        />
+      )}
+    </mesh>
+  );
+};
+
+const BayCoverGrid = ({
+  bay,
+  onPlay,
+  tracks
+}: {
+  readonly bay: number;
+  readonly onPlay: (track: Track) => void;
+  readonly tracks: readonly Track[];
+}) => {
+  const start = bay * SLOTS_PER_BAY;
+  const slice = tracks.slice(start, start + SLOTS_PER_BAY);
+
+  return (
+    <>
+      {slice.map((track, offset) => (
+        <CoverPlane index={start + offset} key={track.id} onPlay={onPlay} track={track} />
+      ))}
+    </>
+  );
+};
 
 /* ---------- 程序化环境光：不下载 HDRI，也让金属盘面有反射 ---------- */
 
@@ -423,7 +562,7 @@ const BayCds = ({ absoluteIndices, favoriteSet, resources }: BayCdsProps) => {
 /* ---------- 场景 ---------- */
 
 /** S2R-1a 压测场景：架子全局实例化 + CD 按 Bay 虚拟化。 */
-const CorridorScene = ({ autoSpin = false, favoriteIndices = [], trackCount }: CorridorSceneProps) => {
+const CorridorScene = ({ autoSpin = false, favoriteIndices = [], onPlayTrack, trackCount, tracks }: CorridorSceneProps) => {
   const bays = getBayCount(trackCount);
   const [centerBay, setCenterBay] = useState(0);
   const resources = useGalleryResources();
@@ -465,6 +604,7 @@ const CorridorScene = ({ autoSpin = false, favoriteIndices = [], trackCount }: C
           resources={resources}
         />
       ))}
+      <BayCoverGrid bay={centerBay} onPlay={onPlayTrack} tracks={tracks} />
       <CameraRig autoSpin={autoSpin} bayCount={bays} onCenterBayChange={setCenterBay} />
       <PerfProbe />
     </Canvas>

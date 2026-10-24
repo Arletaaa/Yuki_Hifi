@@ -1344,3 +1344,21 @@
     width: 150px;
   }
 }
+/* ---------- 真实封面 ---------- */
+
+.cover__image {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.vinyl__label {
+  overflow: hidden;
+}
+
+.vinyl__label-image {
+  height: 100%;
+  width: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}

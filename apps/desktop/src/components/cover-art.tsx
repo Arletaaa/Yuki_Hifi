@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { createCoverMediaUrl } from "@arlhifi/shared";
 import { cn } from "@arlhifi/ui";
 import { getSeedHue } from "../lib/seed";
 
@@ -9,12 +10,14 @@ interface CoverArtStyle extends CSSProperties {
 
 export interface CoverArtProps {
   readonly className?: string;
+  readonly coverPath?: string | null;
   readonly seed: string;
   readonly title: string;
 }
 
-/** 无封面时的确定性占位封面（与曲目 id 绑定，不联网、无资产依赖）。 */
-export const CoverArt = ({ className, seed, title }: CoverArtProps) => {
+/** 有封面时显示真实封面，加载失败或没有封面时退回确定性占位图形。 */
+export const CoverArt = ({ className, coverPath = null, seed, title }: CoverArtProps) => {
+  const [failed, setFailed] = useState(false);
   const hue = getSeedHue(seed);
   const style: CoverArtStyle = {
     "--cover-hue": `${hue}`,
@@ -23,8 +26,21 @@ export const CoverArt = ({ className, seed, title }: CoverArtProps) => {
 
   return (
     <div aria-hidden="true" className={cn("cover", className)} style={style} title={title}>
-      <span className="cover__groove" />
-      <span className="cover__label" />
+      {coverPath && !failed ? (
+        <img
+          alt=""
+          className="cover__image"
+          onError={() => {
+            setFailed(true);
+          }}
+          src={createCoverMediaUrl(coverPath)}
+        />
+      ) : (
+        <>
+          <span className="cover__groove" />
+          <span className="cover__label" />
+        </>
+      )}
     </div>
   );
 };

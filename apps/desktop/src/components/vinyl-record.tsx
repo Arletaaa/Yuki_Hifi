@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+﻿import type { CSSProperties } from "react";
+import { createCoverMediaUrl } from "@arlhifi/shared";
 import { cn } from "@arlhifi/ui";
 import { getSeedHue } from "../lib/seed";
 
@@ -8,13 +9,14 @@ interface VinylStyle extends CSSProperties {
 }
 
 export interface VinylRecordProps {
+  readonly coverPath?: string | null;
   readonly isPlaying: boolean;
   readonly seed: string;
   readonly spin: boolean;
   readonly title: string;
 }
 
-export const VinylRecord = ({ isPlaying, seed, spin, title }: VinylRecordProps) => {
+export const VinylRecord = ({ coverPath = null, isPlaying, seed, spin, title }: VinylRecordProps) => {
   const hue = getSeedHue(seed);
   const style: VinylStyle = {
     "--vinyl-hue": `${hue}`,
@@ -30,7 +32,9 @@ export const VinylRecord = ({ isPlaying, seed, spin, title }: VinylRecordProps) 
     >
       <div className="vinyl__disc">
         <span className="vinyl__grooves" />
-        <span className="vinyl__label" />
+        <span className="vinyl__label">
+          {coverPath ? <img alt="" className="vinyl__label-image" src={createCoverMediaUrl(coverPath)} /> : null}
+        </span>
         <span className="vinyl__hole" />
       </div>
       <span className="vinyl__tonearm" />

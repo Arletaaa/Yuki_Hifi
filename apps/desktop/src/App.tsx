@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getSelectedDirectoryPath } from "@arlhifi/shared";
 import { AppRail, type PageId } from "./components/app-rail";
 import { BackgroundScene } from "./components/background-scene";
@@ -186,10 +186,12 @@ export const App = () => {
       <SceneStage
         autoSpin={getSceneAutoSpin()}
         favoriteIndices={favoriteIndices}
+        onPlayTrack={playTrack}
         onExit={() => {
           setScenePreview(false);
         }}
         trackCount={getScenePreviewTrackCount() ?? Math.max(library.length, 60)}
+        tracks={library}
       />
     );
   }

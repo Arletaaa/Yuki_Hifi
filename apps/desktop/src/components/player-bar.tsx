@@ -1,4 +1,4 @@
-import { AlertCircle, Heart, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
+﻿import { AlertCircle, Heart, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
 import type { PlaybackMode } from "@arlhifi/shared";
 import { formatBitDepth, formatDuration, formatSampleRate, getAudioFormatLabel, getQualityLabel } from "@arlhifi/shared";
 import { IconButton, Knob } from "@arlhifi/ui";
@@ -51,6 +51,7 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
     <footer className="bar">
       <div className="bar__now">
         <VinylRecord
+          coverPath={currentTrack?.coverPath ?? null}
           isPlaying={isPlaying}
           seed={currentTrack?.id ?? "arlt-hifi-idle"}
           spin={isPlaying && motionTier === "rich"}

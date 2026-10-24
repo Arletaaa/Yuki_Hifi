@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
+﻿import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { X } from "lucide-react";
 import { formatDuration, getAudioFormatLabel, type Track } from "@arlhifi/shared";
 import { cn } from "@arlhifi/ui";
@@ -70,7 +70,7 @@ export const TrackRow = ({ index, isCurrent, isFavorite, onPlay, onRemove, track
         )}
       </span>
       <span className="track-row__main">
-        <CoverArt className="cover--row" seed={track.id} title={track.title} />
+        <CoverArt className="cover--row" coverPath={track.coverPath} seed={track.id} title={track.title} />
         <span className="track-row__text">
           <span className="track-row__title">{track.title}</span>
           <span className="track-row__artist">{track.artist}</span>
