@@ -1,0 +1,47 @@
+@import "./styles/tokens.css";
+@import "./styles/theme.css";
+@import "./styles/player.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg-color);
+}
+
+body {
+  margin: 0;
+  min-width: 1024px;
+  min-height: 100vh;
+  font-family:
+    Outfit,
+    Inter,
+    "PingFang SC",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: var(--text-main);
+  background: var(--bg-color);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+::selection {
+  background: rgba(255, 132, 178, 0.28);
+  color: var(--text-main);
+}

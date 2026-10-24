@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+dist/
+dist-electron/
+.dev-electron/
+release/
+coverage/
+playwright-report/
+test-results/
+.verify/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Claude Code local overrides (personal preferences, not tracked)
+.claude/settings.local.json

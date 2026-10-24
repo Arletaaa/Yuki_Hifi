@@ -1,0 +1,182 @@
+# Arlt HiFi Player — v1.0 重建工作流
+
+> 本文档定义"把半成品做成成品"的执行流程、阶段门禁和验证手段。所有阶段产出都必须可验证、可回退，并且不越过 AGENTS.md 的硬约束。
+
+## 0. 基线（S0 已完成）
+
+### 已具备的能力
+
+- pnpm workspace + Electron + React + TypeScript strict + Vite + Zustand + Tailwind。
+- 主进程能力：目录选择、递归扫描（flac/wav/mp3/m4a/ogg）、受控媒体协议 `arlt-hifi-media://`。
+- preload 暴露 `selectMusicDirectory` / `scanMusicDirectory`，渲染层不直接访问 Node。
+- 播放 MVP：`HTMLAudioElement`，播放/暂停/上一首/下一首/进度同步/错误态。
+- 文档体系：vision / mvp / roadmap / design-language / ADR / prompts / evals / checklists。
+
+### 基线界面（改造前）
+
+![基线界面](baseline-ui.png)
+
+### 基线校验结果（本次实测）
+
+| 命令 | 结果 |
+| --- | --- |
+| `pnpm typecheck` | 通过（4 个包） |
+| `pnpm test` | 通过（17 个用例，4 个测试文件） |
+| `pnpm build` | 通过（dist 产物 164.98 kB JS / 17.49 kB CSS） |
+
+> 附带修复：项目从 `F:\HiFi player` 迁移到当前路径后 `node_modules` 全部变成本地失效链接，已用本地 pnpm store 重装（`electron` 二进制需手动补装）。这是环境问题，与代码无关，但会阻塞一切验证。
+
+### 已确认缺陷清单
+
+| 编号 | 级别 | 问题 | 影响 |
+| --- | --- | --- | --- |
+| P0-1 | P0 | `vite build` 使用 `base: "/"`，`dist/index.html` 引用 `/assets/...`；主进程用 `loadFile` 加载 | 生产构建必然白屏 |
+| P0-2 | P0 | `package.json` 的 `main` 指向从未生成的 `dist-electron/`，`build` 只产出渲染层 | 无法启动生产版，更无法打包 |
+| P0-3 | P0 | 开发脚本未清理 `ELECTRON_RUN_AS_NODE` | 该变量泄漏时 `pnpm dev` 只跑 node 不弹窗 |
+| P1-1 | P1 | HiFi 信息面板 `position: fixed` 浮在内容之上 | 遮挡列表末行，违反 design-language「不遮挡核心操作」 |
+| P1-2 | P1 | 死控件：随机、循环、收藏、播放列表、三个导航项 | 交互承诺与实际不符 |
+| P1-3 | P1 | 进度条不可拖动、无 seek | 播放器基本能力缺失 |
+| P1-4 | P1 | HiFi 面板恒显 mock 数据（96 kHz / 24-bit / Virtual HiFi Output） | 伪造信号信息，违背「HiFi 可见但边界诚实」 |
+| P1-5 | P1 | 不存在真实队列：`queue` 恒等于 `library`，无播放模式 | 队列页无从谈起 |
+| P1-6 | P1 | 无搜索/排序；重启后丢失目录与曲库 | 长期使用体验断裂 |
+| P1-7 | P1 | `.dev-electron/**` 构建产物被 vitest 收集，重复跑同一测试 | 测试信号失真 |
+| P1-8 | P1 | 仓库没有 `.git` | 无法做原子提交与回滚，流程不可追溯 |
+| P2-1 | P2 | 元数据只有文件名推断，质量字段对 flac/wav 硬编码 44100/16 | 信息不可信（需要在 UI 上显式标注） |
+| P2-2 | P2 | 主题 token 有 light/dark 两套，但没有任何入口切换 | 半成品状态 |
+
+## 1. 成品定义（Definition of Done）
+
+成品 = 一个能装、能扫、能放、信息可信、界面克制的本地 HiFi 桌面播放器。用户视角必须能完成这条闭环：
+
+1. 启动应用，看到稳定的主界面（不白屏、不遮挡）。
+2. 选择本地音乐文件夹，扫描结果与错误都有明确反馈。
+3. 在音乐库中搜索、排序、播放任意曲目。
+4. 在播放栏完成播放/暂停/上一首/下一首/拖动进度/调音量/静音。
+5. 播放模式（顺序 / 单曲循环 / 随机）真实生效，队列可见、可跳转、可移除。
+6. 看清当前曲目的真实格式信息，并明确区分"来自文件名推断"与"audio-core 未接入"。
+7. 退出重进，上次目录、设置、音量仍在。
+8. 生产构建能启动（`pnpm start`），并能产出可分发包。
+9. `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿，文档与代码一致。
+
+## 2. 范围边界（不越界）
+
+**做**
+
+- 重构渲染层信息架构与设计系统（三页：音乐库 / 播放队列 / 设置）。
+- 重构 `player-store` 为可测的纯领域逻辑 + 真实队列 + 播放模式。
+- 补齐播放交互（seek、静音、模式、自动下一首、错误恢复）。
+- 库的搜索/排序/刷新/持久化（单目录）。
+- HiFi 信息诚实化（真实 / 推断 / 未接入三态）。
+- 生产构建与打包链路修复。
+- 测试补齐、CI 拉齐、文档同步。
+
+**不做（记录在 [backlog](backlog.md)，不实施）**
+
+- Rust audio-core、真实解码、输出设备枚举、独占模式、ASIO/WASAPI。
+- 标签（ID3/Vorbis）解析与封面提取——仍按文件名推断展示，并显式标注。
+- 右侧舞台、角色舞台、Live2D、MV、动态视觉舞台、歌词滚动。
+- 多目录、在线流媒体、云同步、自动更新、账号体系。
+- 引入新的状态库、UI 框架、CSS-in-JS 或路由库。
+
+## 3. 阶段工作流
+
+每一阶段都必须走完「验收标准 → 实现 → 质量门禁 → 截图/运行验证 → 文档同步 → 提交」后才允许进入下一阶段。**门禁不绿不进入下一阶段。**
+
+### S1 需求与信息架构冻结
+
+- 交付物：更新的 `docs/product/mvp.md`（验收标准表）、`docs/product/design-language.md`（布局与控件规则）、`docs/decisions/003-v1-scope.md`。
+- 关键决策：三页 IA、播放模式语义、HiFi 信息位置（数据列，非舞台）。
+- 验收：每条验收标准都能映射到后续阶段的实现项或测试用例。
+- 验证：文档交叉检查（vision / mvp / roadmap / design-language 无互相矛盾）。
+
+### S2 设计系统与界面骨架
+
+- 交付物：tokens 重做（色彩/间距/字号/圆角/阴影/动效时长）、`packages/ui` 基础组件（`Button` / `IconButton` / `Panel` / `Field` / `Slider` / `SegmentedControl` / `EmptyState`）、三页布局骨架。
+- 方向：安静、克制、可长期注视的"仪器面板"感；无糖果渐变、无发光按钮、无遮挡式浮层。
+- 验收：1440×900 与 1024×680 两档截图无遮挡、无溢出；键盘可达（focus 可见）；对比度达标。
+- 验证：构建后静态服务 + headless 截图对比两个视口。
+
+### S3 领域模型与状态重构
+
+- 交付物：`types.ts` 扩展（`MediaFormat`、`PlaybackMode`、`QueueEntry`）、`player-store` 拆分为 library / queue / playback / settings 语义（仍单 store，按 slice 组织）、纯函数抽取到可单测模块。
+- 验收：队列与库解耦；上一首/下一首/模式切换/移除当前曲目都有确定行为与单测。
+- 验证：`pnpm test`（store 用例覆盖所有状态迁移）。
+
+### S4 播放链路
+
+- 交付物：`use-audio-playback` 重构（seek、音量、静音、`ended` 策略、模式、错误恢复）、播放栏重构。
+- 验收：拖动进度生效；暂停后恢复位置；换曲不残留旧进度；错误态有可恢复操作；不引入任何 Node/Electron 直接访问。
+- 验证：单测（hook 逻辑抽取为纯函数）+ 真机 Electron 手测清单。
+
+### S5 库、扫描与持久化
+
+- 交付物：扫描结果分级（`flac/wav → lossless`，`mp3/m4a/ogg → lossy/unknown`，采样率位深未知时标 `—`）、搜索、排序（标题/艺术家/时长/格式）、刷新、上次目录持久化（主进程 `app.getPath("userData")`，通过 preload 暴露）。
+- 验收：重启恢复目录；搜索/排序结果可预期；空目录、无权限、超大目录都有状态。
+- 验证：scanner 单测 + 真机手测。
+
+### S6 HiFi 信息诚实化
+
+- 交付物：HiFi 信息与曲目绑定，字段来源标注（`来自扩展名` / `来自文件名` / `未接入 audio-core`）；移除 `mockHifiSignalInfo`。
+- 验收：任何一屏都不出现无法解释的数值；未接入项明确写"未接入"。
+- 验证：快照/单测断言三态渲染 + 截图核对。
+
+### S7 生产可用与打包
+
+- 交付物：`vite base: "./"`、主进程产物 `dist-electron`、`pnpm start` 运行生产构建、`.dev-electron`/`dist` 与 vitest 隔离、`ELECTRON_RUN_AS_NODE` 清理、`electron-builder` 免安装包（如确认纳入）。
+- 验收：`pnpm build && pnpm start` 打开窗口且界面正常；安装包能生成并启动。
+- 验证：真机启动 + 生产构建截图与开发态一致。
+
+### S8 质量门禁与文档收尾
+
+- 交付物：测试覆盖率补齐（store/scanner/format/queue/seek）、CI 增加 build 与排除构建产物、README 与 roadmap 状态更新、ADR 归档、`docs/evals/eval-plan.md` 对齐。
+- 验收：三条命令全绿；文档无过期描述；`git log` 呈现清晰的阶段提交。
+- 验证：清空 `node_modules` 后 `pnpm install && pnpm typecheck && pnpm test && pnpm build` 全流程复现。
+
+## 4. 每阶段执行循环
+
+1. **写验收标准**：先写成可判定的句子（"拖动进度条到 50% 后 1 秒内位置误差 < 1s"）。
+2. **先失败后修复**：能写测试的先补测试（红），再实现（绿）。
+3. **最小实现**：只改达成该条验收所需的代码，无关问题记入 backlog。
+4. **质量门禁**：`pnpm typecheck` → `pnpm test` → `pnpm build`。
+5. **可视化验证**：截图或真机运行，与上一步验收标准逐条对照。
+6. **文档同步 + 原子提交**：一次提交只表达一个意图。
+
+## 5. 验证手段
+
+| 手段 | 命令 / 方式 | 说明 |
+| --- | --- | --- |
+| 类型 | `pnpm typecheck` | 必须 0 错误 |
+| 单测 | `pnpm test` | 新增行为必须有对应用例 |
+| 构建 | `pnpm build` | 渲染层 + 主进程产物都要生成 |
+| 生产运行 | `pnpm start` | 打开生产构建窗口 |
+| 真机开发 | `pnpm dev` | 需确保 `ELECTRON_RUN_AS_NODE` 未泄漏 |
+| 渲染层截图 | 本地静态服务 + Chrome `--headless --screenshot` | 用于设计核对与回归对比 |
+| 手工验收 | 按 S4/S5 的交互清单逐条点 | 播放、seek、模式、持久化 |
+
+> 环境说明：当前会话的沙箱禁止子进程通过管道通信，`vitest`（esbuild）与 Chromium 多进程都需要放宽权限才能运行；截图与测试命令需要单次提权。此限制只影响本会话，不影响项目本身的规范命令。
+
+## 6. 变更控制
+
+- 任何超出本文档范围的想法 → 写入 `docs/product/backlog.md`，当阶段不实现。
+- 任何影响架构/产品边界的决定 → 新增 `docs/decisions/NNN-*.md` ADR，并在提交信息中引用。
+- 每阶段结束更新 `docs/product/roadmap.md` 的阶段状态，避免文档与代码脱节。
+
+## 7. 风险与应对
+
+| 风险 | 应对 |
+| --- | --- |
+| 无法从文件读取真实采样率/位深 | 不伪造：显示"未接入 audio-core"或"—"，并在 ADR 说明边界 |
+| 大目录扫描卡顿 | 先同步扫描 + 扫描中状态；超范围再评估流式进度 |
+| 打包工具下载失败（网络/代理） | 打包列为可选门禁，失败不阻塞 S1–S6 交付 |
+| 设计返工 | S2 先出截图对齐方向，再落组件 |
+| 沙箱限制导致验证中断 | 批量提权执行验证命令，逐条记录结果 |
+
+## 8. 提交规范
+
+`feat|fix|refactor|docs|test|chore(scope): 一句话说明`
+
+示例：`feat(playback): 支持拖动进度条 seek`、`fix(build): 修正生产构建资源路径与主进程产物`。
+
+## 9. 待确认决策
+
+见对话中的三个问题：视觉方向、交付形态（是否打包）、版本控制。确认后写入 ADR 并开始 S1。

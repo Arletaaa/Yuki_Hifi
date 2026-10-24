@@ -1,0 +1,25 @@
+{
+  "name": "arlt-hifi-player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Arlt HiFi Player monorepo for an anime-content local HiFi music desktop app.",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @arlhifi/desktop dev",
+    "dev:web": "pnpm --filter @arlhifi/desktop dev:web",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "build": "pnpm -r build"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
