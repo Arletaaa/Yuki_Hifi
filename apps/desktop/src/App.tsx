@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createBackgroundMediaUrl, getSelectedDirectoryPath } from "@arlhifi/shared";
 import { AppRail, type PageId } from "./components/app-rail";
 import { BackgroundScene } from "./components/background-scene";
@@ -35,10 +35,26 @@ export const App = () => {
 
   const library = usePlayerStore((state) => state.library);
   const queue = usePlayerStore((state) => state.queue);
+  const favorites = usePlayerStore((state) => state.favorites);
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id ?? null);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const playTrack = usePlayerStore((state) => state.playTrack);
+  const removeFromQueue = usePlayerStore((state) => state.removeFromQueue);
+  const clearQueue = usePlayerStore((state) => state.clearQueue);
   const setWallpaper = useWallpaperStore((state) => state.setWallpaper);
+
+  // 场景需要"第几张 CD 是收藏"，而不是 id：把收藏映射成曲库下标。
+  const favoriteIndices = useMemo(() => {
+    const favoriteSet = new Set(favorites);
+
+    return library.reduce<number[]>((indices, track, index) => {
+      if (favoriteSet.has(track.id)) {
+        indices.push(index);
+      }
+
+      return indices;
+    }, []);
+  }, [favorites, library]);
 
   const scanDirectory = async (nextDirectoryPath: string): Promise<void> => {
     const api = window.arltHifiDesktop;
@@ -127,6 +143,7 @@ export const App = () => {
     return (
       <SceneStage
         autoSpin={getSceneAutoSpin()}
+        favoriteIndices={favoriteIndices}
         onExit={() => {
           setScenePreview(false);
         }}
@@ -146,6 +163,7 @@ export const App = () => {
               currentTrackId={currentTrackId}
               directoryPath={directoryPath}
               errorMessage={scanErrorMessage}
+              favoriteIds={favorites}
               onPlayTrack={playTrack}
               onRefresh={handleRefresh}
               onSelectDirectory={() => {
@@ -158,10 +176,15 @@ export const App = () => {
           {page === "queue" ? (
             <QueuePage
               currentTrackId={currentTrackId}
+              favoriteIds={favorites}
+              onClearQueue={clearQueue}
               onGoToLibrary={() => {
                 setPage("library");
               }}
               onPlayTrack={playTrack}
+              onRemoveFromQueue={(track) => {
+                removeFromQueue(track.id);
+              }}
               queue={queue}
             />
           ) : null}

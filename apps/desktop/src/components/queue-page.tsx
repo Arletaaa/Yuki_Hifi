@@ -1,4 +1,4 @@
-import { ListMusic } from "lucide-react";
+import { ListMusic, Trash2 } from "lucide-react";
 import { formatDuration, type Track } from "@arlhifi/shared";
 import { Button } from "@arlhifi/ui";
 import { EmptyState } from "./empty-state";
@@ -6,12 +6,23 @@ import { TrackListHead, TrackRow } from "./track-row";
 
 export interface QueuePageProps {
   readonly currentTrackId: string | null;
+  readonly favoriteIds: readonly string[];
+  readonly onClearQueue: () => void;
   readonly onGoToLibrary: () => void;
   readonly onPlayTrack: (track: Track) => void;
+  readonly onRemoveFromQueue: (track: Track) => void;
   readonly queue: readonly Track[];
 }
 
-export const QueuePage = ({ currentTrackId, onGoToLibrary, onPlayTrack, queue }: QueuePageProps) => {
+export const QueuePage = ({
+  currentTrackId,
+  favoriteIds,
+  onClearQueue,
+  onGoToLibrary,
+  onPlayTrack,
+  onRemoveFromQueue,
+  queue
+}: QueuePageProps) => {
   const totalSeconds = queue.reduce((total, track) => total + track.durationSeconds, 0);
 
   return (
@@ -27,6 +38,10 @@ export const QueuePage = ({ currentTrackId, onGoToLibrary, onPlayTrack, queue }:
           </p>
         </div>
         <div className="page__actions">
+          <Button disabled={queue.length === 0} onClick={onClearQueue} size="sm" variant="quiet">
+            <Trash2 aria-hidden="true" size={14} />
+            清空队列
+          </Button>
           <Button onClick={onGoToLibrary} variant="ghost">
             去音乐库
           </Button>
@@ -47,14 +62,16 @@ export const QueuePage = ({ currentTrackId, onGoToLibrary, onPlayTrack, queue }:
           />
         ) : (
           <div className="track-list">
-            <TrackListHead />
+            <TrackListHead withActions />
             <div className="track-list__body">
               {queue.map((track, index) => (
                 <TrackRow
                   index={index}
                   isCurrent={track.id === currentTrackId}
+                  isFavorite={favoriteIds.includes(track.id)}
                   key={`${track.id}-${index}`}
                   onPlay={onPlayTrack}
+                  onRemove={onRemoveFromQueue}
                   track={track}
                 />
               ))}

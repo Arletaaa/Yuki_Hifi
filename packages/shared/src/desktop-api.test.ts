@@ -20,7 +20,9 @@ describe("desktop api helpers", () => {
       quality: "unknown",
       sampleRateHz: 0,
       bitDepth: 0,
-      filePath: "D:\\Music\\Track.mp3"
+      filePath: "D:\\Music\\Track.mp3",
+      coverPath: null,
+      metadataSource: "filename"
     });
 
     expect(url).toMatch(/^arlt-hifi-media:\/\/audio\//);

@@ -51,6 +51,7 @@ export interface LibraryPageProps {
   readonly currentTrackId: string | null;
   readonly directoryPath: string | null;
   readonly errorMessage: string | null;
+  readonly favoriteIds: readonly string[];
   readonly onPlayTrack: (track: Track) => void;
   readonly onRefresh: () => void;
   readonly onSelectDirectory: () => void;
@@ -62,6 +63,7 @@ export const LibraryPage = ({
   currentTrackId,
   directoryPath,
   errorMessage,
+  favoriteIds,
   onPlayTrack,
   onRefresh,
   onSelectDirectory,
@@ -122,6 +124,7 @@ export const LibraryPage = ({
                 <TrackRow
                   index={index}
                   isCurrent={track.id === currentTrackId}
+                  isFavorite={favoriteIds.includes(track.id)}
                   key={track.id}
                   onPlay={onPlayTrack}
                   track={track}

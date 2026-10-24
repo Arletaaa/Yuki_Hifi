@@ -163,6 +163,15 @@
 - 验收：队列与库解耦；上一首/下一首/模式切换/移除当前曲目都有确定行为与单测。
 - 验证：`pnpm test`（store 用例覆盖所有状态迁移）。
 
+**S3 结论（2026-10-24）**
+
+- `player-store` 按 library / queue / playback 三个切片重组（仍单 store）；新增 `favorites`、`removeFromQueue`、`clearQueue`、`rebuildQueueFromLibrary`。
+- `Track` 增加 `coverPath: string | null` 与 `metadataSource: "tags" | "filename"`，扫描器先填 `filename` / `null`，S5 用标签解析覆盖。
+- 队列与库解耦：`loadLibrary` 会剔除已不在库里的队列项；`playTrack` 不再把曲目插到队首，改为追加。
+- UI 接线：队列页可移除单曲/清空队列、列表与队列显示收藏星标、播放栏可收藏当前曲目；场景改为读取真实收藏下标。
+- 测试：desktop 38 → 53 用例（收藏、队列移除/清空/重建、剪枝、追加行为）。
+- 收藏持久化仍留给 S5 的设置文件，避免两套存储并存。
+
 ### S4 播放链路
 
 - 交付物：`use-audio-playback` 重构（seek、音量、静音、`ended` 策略、模式、错误恢复）、播放栏重构。

@@ -24,7 +24,6 @@ import {
 } from "./layout";
 import { countRenderedFrame, sceneStats } from "./perf";
 
-const FAVORITE_STEP = 7;
 const HOME_Z = 2.6;
 const MAX_FORWARD = -(BAY_DEPTH * 40);
 const DISC_OFFSET = 0.035;
@@ -33,6 +32,7 @@ const SHELF_HEIGHTS = [0.72, 1.22, 1.72];
 
 interface CorridorSceneProps {
   readonly autoSpin?: boolean;
+  readonly favoriteIndices?: readonly number[];
   readonly trackCount: number;
 }
 
@@ -339,16 +339,23 @@ const useGalleryResources = (): GalleryResources => {
 
 interface BayCdsProps {
   readonly absoluteIndices: readonly number[];
+  readonly favoriteSet: ReadonlySet<number>;
   readonly resources: GalleryResources;
 }
 
-const BayCds = ({ absoluteIndices, resources }: BayCdsProps) => {
+const BayCds = ({ absoluteIndices, favoriteSet, resources }: BayCdsProps) => {
   const normalRef = useRef<InstancedMesh>(null);
   const favoriteRef = useRef<InstancedMesh>(null);
   const discRef = useRef<InstancedMesh>(null);
 
-  const favorites = useMemo(() => absoluteIndices.filter((index) => index % FAVORITE_STEP === 0), [absoluteIndices]);
-  const normal = useMemo(() => absoluteIndices.filter((index) => index % FAVORITE_STEP !== 0), [absoluteIndices]);
+  const favorites = useMemo(
+    () => absoluteIndices.filter((index) => favoriteSet.has(index)),
+    [absoluteIndices, favoriteSet]
+  );
+  const normal = useMemo(
+    () => absoluteIndices.filter((index) => !favoriteSet.has(index)),
+    [absoluteIndices, favoriteSet]
+  );
 
   useLayoutEffect(() => {
     const dummy = new Object3D();
@@ -416,10 +423,11 @@ const BayCds = ({ absoluteIndices, resources }: BayCdsProps) => {
 /* ---------- 场景 ---------- */
 
 /** S2R-1a 压测场景：架子全局实例化 + CD 按 Bay 虚拟化。 */
-const CorridorScene = ({ autoSpin = false, trackCount }: CorridorSceneProps) => {
+const CorridorScene = ({ autoSpin = false, favoriteIndices = [], trackCount }: CorridorSceneProps) => {
   const bays = getBayCount(trackCount);
   const [centerBay, setCenterBay] = useState(0);
   const resources = useGalleryResources();
+  const favoriteSet = useMemo(() => new Set(favoriteIndices), [favoriteIndices]);
 
   const visibleBays = useMemo(() => {
     const from = Math.max(0, centerBay - VISIBLE_BAY_RADIUS);
@@ -453,6 +461,7 @@ const CorridorScene = ({ autoSpin = false, trackCount }: CorridorSceneProps) => 
             (_unused, offset) => bay * SLOTS_PER_BAY + offset
           )}
           key={`bay-${bay}`}
+          favoriteSet={favoriteSet}
           resources={resources}
         />
       ))}

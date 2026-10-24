@@ -5,6 +5,7 @@ export const initialPlayerSnapshot: PlayerSnapshot = {
   status: "idle",
   currentTrack: null,
   queue: [],
+  favorites: [],
   playbackMode: "sequential",
   volume: 72,
   positionSeconds: 0,

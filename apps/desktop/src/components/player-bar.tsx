@@ -1,4 +1,4 @@
-import { AlertCircle, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
+import { AlertCircle, Heart, ListMusic, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward } from "lucide-react";
 import type { PlaybackMode } from "@arlhifi/shared";
 import { formatBitDepth, formatDuration, formatSampleRate, getAudioFormatLabel, getQualityLabel } from "@arlhifi/shared";
 import { IconButton, Knob } from "@arlhifi/ui";
@@ -38,8 +38,11 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
   const cyclePlaybackMode = usePlayerStore((state) => state.cyclePlaybackMode);
   const setVolume = usePlayerStore((state) => state.setVolume);
   const motionTier = useEffectiveMotionTier();
+  const favorites = usePlayerStore((state) => state.favorites);
+  const toggleFavorite = usePlayerStore((state) => state.toggleFavorite);
 
   const isPlaying = status === "playing";
+  const isFavorite = currentTrack ? favorites.includes(currentTrack.id) : false;
   const progressPercent = getProgressPercent(positionSeconds, durationSeconds);
   const ModeIcon = modeMeta[playbackMode].icon;
   const formatLabel = currentTrack ? getAudioFormatLabel(currentTrack.filePath) : "—";
@@ -114,6 +117,18 @@ export const PlayerBar = ({ onOpenQueue }: PlayerBarProps) => {
       </div>
 
       <div className="bar__tools">
+        <IconButton
+          active={isFavorite}
+          disabled={!currentTrack}
+          label={isFavorite ? "取消收藏" : "收藏当前曲目"}
+          onClick={() => {
+            if (currentTrack) {
+              toggleFavorite(currentTrack.id);
+            }
+          }}
+        >
+          <Heart aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} size={17} />
+        </IconButton>
         <div className="signal" title="格式来自文件扩展名；采样率与位深需标签解析后填充">
           <span className="signal__format">{formatLabel}</span>
           <span className="signal__value">{currentTrack ? formatSampleRate(currentTrack.sampleRateHz) : "—"}</span>

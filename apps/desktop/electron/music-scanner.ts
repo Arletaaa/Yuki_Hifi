@@ -19,7 +19,9 @@ export const createTrackFromFilePath = (filePath: string): Track => {
     quality,
     sampleRateHz: 0,
     bitDepth: 0,
-    filePath
+    filePath,
+    coverPath: null,
+    metadataSource: "filename"
   };
 };
 

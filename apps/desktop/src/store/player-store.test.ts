@@ -11,7 +11,9 @@ const createTrack = (id: string, title: string): Track => ({
   quality: "unknown",
   sampleRateHz: 0,
   bitDepth: 0,
-  filePath: `D:\\Music\\${title}.mp3`
+  filePath: `D:\\Music\\${title}.mp3`,
+  coverPath: null,
+  metadataSource: "filename"
 });
 
 describe("player store initial state", () => {
@@ -200,5 +202,124 @@ describe("player store actions", () => {
     store.getState().markPlaybackPaused();
 
     expect(store.getState().status).toBe("paused");
+  });
+});
+
+describe("favorites", () => {
+  it("toggles a track id in and out of the favorites list", () => {
+    const store = createPlayerStore();
+
+    store.getState().toggleFavorite("track-1");
+    expect(store.getState().favorites).toEqual(["track-1"]);
+
+    store.getState().toggleFavorite("track-2");
+    expect(store.getState().favorites).toEqual(["track-1", "track-2"]);
+
+    store.getState().toggleFavorite("track-1");
+    expect(store.getState().favorites).toEqual(["track-2"]);
+  });
+
+  it("keeps favorites when the library is reloaded", () => {
+    const store = createPlayerStore();
+
+    store.getState().toggleFavorite("track-1");
+    store.getState().loadLibrary([createTrack("track-1", "First")]);
+
+    expect(store.getState().favorites).toEqual(["track-1"]);
+  });
+});
+
+describe("queue editing", () => {
+  it("removes a non-current track without touching playback", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first, second]);
+    store.getState().playTrack(first);
+    store.getState().removeFromQueue("track-2");
+
+    expect(store.getState().queue).toEqual([first]);
+    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().status).toBe("playing");
+  });
+
+  it("moves to the replacement track when the current one is removed", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+    const third = createTrack("track-3", "Third");
+
+    store.getState().loadLibrary([first, second, third]);
+    store.getState().playTrack(second);
+    store.getState().removeFromQueue("track-2");
+
+    expect(store.getState().queue).toEqual([first, third]);
+    expect(store.getState().currentTrack).toEqual(third);
+    expect(store.getState().status).toBe("playing");
+    expect(store.getState().positionSeconds).toBe(0);
+  });
+
+  it("stops playback when the last queue item is removed", () => {
+    const store = createPlayerStore();
+    const only = createTrack("track-1", "First");
+
+    store.getState().loadLibrary([only]);
+    store.getState().playTrack(only);
+    store.getState().removeFromQueue("track-1");
+
+    expect(store.getState().queue).toHaveLength(0);
+    expect(store.getState().currentTrack).toBeNull();
+    expect(store.getState().status).toBe("idle");
+  });
+
+  it("clears the queue and stops playback", () => {
+    const store = createPlayerStore();
+    const track = createTrack("track-1", "First");
+
+    store.getState().loadLibrary([track]);
+    store.getState().playTrack(track);
+    store.getState().clearQueue();
+
+    expect(store.getState().queue).toHaveLength(0);
+    expect(store.getState().currentTrack).toBeNull();
+    expect(store.getState().status).toBe("idle");
+  });
+
+  it("rebuilds the queue from the library and keeps the current track", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first, second]);
+    store.getState().playTrack(first);
+    store.getState().clearQueue();
+    store.getState().rebuildQueueFromLibrary();
+
+    expect(store.getState().queue).toEqual([first, second]);
+  });
+
+  it("prunes queue entries that left the library on reload", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first, second]);
+    store.getState().loadLibrary([second]);
+
+    expect(store.getState().queue).toEqual([second]);
+    expect(store.getState().currentTrack).toBeNull();
+  });
+
+  it("appends a track played from outside the queue", () => {
+    const store = createPlayerStore();
+    const first = createTrack("track-1", "First");
+    const second = createTrack("track-2", "Second");
+
+    store.getState().loadLibrary([first]);
+    store.getState().playTrack(second);
+
+    expect(store.getState().queue).toEqual([first, second]);
+    expect(store.getState().currentTrack).toEqual(second);
   });
 });

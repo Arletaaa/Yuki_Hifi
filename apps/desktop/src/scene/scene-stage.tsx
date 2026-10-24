@@ -7,12 +7,13 @@ const CorridorScene = lazy(() => import("./corridor-scene"));
 
 export interface SceneStageProps {
   readonly autoSpin: boolean;
+  readonly favoriteIndices: readonly number[];
   readonly onExit: () => void;
   readonly trackCount: number;
 }
 
 /** S2R-0 实验舞台：验证渲染成本、交互手感与降级路径；S2R-1 才接入正式导航。 */
-export const SceneStage = ({ autoSpin, onExit, trackCount }: SceneStageProps) => {
+export const SceneStage = ({ autoSpin, favoriteIndices, onExit, trackCount }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
   const sample = useFrameRateSample();
 
@@ -21,7 +22,7 @@ export const SceneStage = ({ autoSpin, onExit, trackCount }: SceneStageProps) =>
       <div className="scene-stage__viewport">
         {supported ? (
           <Suspense fallback={<p className="scene-stage__loading">正在初始化渲染器…</p>}>
-            <CorridorScene autoSpin={autoSpin} trackCount={trackCount} />
+            <CorridorScene autoSpin={autoSpin} favoriteIndices={favoriteIndices} trackCount={trackCount} />
           </Suspense>
         ) : (
           <div className="scene-stage__fallback">
