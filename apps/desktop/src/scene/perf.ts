@@ -2,14 +2,18 @@ import { useEffect, useState } from "react";
 
 export interface SceneStats {
   calls: number;
+  mountedBays: number;
   textures: number;
+  totalBays: number;
   triangles: number;
 }
 
 /** 渲染器统计，由场景内的探针每帧写入。 */
 export const sceneStats: SceneStats = {
   calls: 0,
+  mountedBays: 0,
   textures: 0,
+  totalBays: 0,
   triangles: 0
 };
 

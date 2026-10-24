@@ -60,6 +60,12 @@ export const SceneStage = ({ autoSpin, onExit, trackCount }: SceneStageProps) =>
             <dd>{sceneStats.textures}</dd>
           </div>
           <div>
+            <dt>Bay</dt>
+            <dd>
+              {sceneStats.mountedBays}/{sceneStats.totalBays}
+            </dd>
+          </div>
+          <div>
             <dt>CD</dt>
             <dd>{trackCount}</dd>
           </div>

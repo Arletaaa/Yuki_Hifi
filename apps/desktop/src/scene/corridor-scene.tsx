@@ -1,6 +1,16 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { Color, CylinderGeometry, InstancedMesh, MathUtils, Object3D } from "three";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  BoxGeometry,
+  Color,
+  CylinderGeometry,
+  InstancedMesh,
+  MathUtils,
+  MeshStandardMaterial,
+  Object3D,
+  PMREMGenerator
+} from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { getSeedHue } from "../lib/seed";
 import {
   BAY_DEPTH,
@@ -9,23 +19,57 @@ import {
   getBayCount,
   getSlotTransform,
   RACK_X,
-  SLEEVE_SIZE
+  SLEEVE_SIZE,
+  SLOTS_PER_BAY
 } from "./layout";
 import { countRenderedFrame, sceneStats } from "./perf";
 
 const FAVORITE_STEP = 7;
 const HOME_Z = 2.6;
-const MAX_FORWARD = -(BAY_DEPTH * 12);
+const MAX_FORWARD = -(BAY_DEPTH * 40);
 const DISC_OFFSET = 0.035;
+const VISIBLE_BAY_RADIUS = 2;
+const SHELF_HEIGHTS = [0.72, 1.22, 1.72];
 
 interface CorridorSceneProps {
   readonly autoSpin?: boolean;
   readonly trackCount: number;
 }
 
-const CameraRig = ({ autoSpin }: { readonly autoSpin: boolean }) => {
+/* ---------- 程序化环境光：不下载 HDRI，也让金属盘面有反射 ---------- */
+
+const ProceduralEnvironment = () => {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const generator = new PMREMGenerator(gl);
+    const environment = generator.fromScene(new RoomEnvironment(), 0.04);
+
+    scene.environment = environment.texture;
+    scene.environmentIntensity = 0.55;
+
+    return () => {
+      scene.environment = null;
+      environment.dispose();
+      generator.dispose();
+    };
+  }, [gl, scene]);
+
+  return null;
+};
+
+/* ---------- 镜头 ---------- */
+
+interface CameraRigProps {
+  readonly autoSpin: boolean;
+  readonly bayCount: number;
+  readonly onCenterBayChange: (bay: number) => void;
+}
+
+const CameraRig = ({ autoSpin, bayCount, onCenterBayChange }: CameraRigProps) => {
   const { camera, gl, invalidate } = useThree();
   const state = useRef({
+    bay: 0,
     dragging: false,
     lastX: 0,
     lastY: 0,
@@ -105,7 +149,6 @@ const CameraRig = ({ autoSpin }: { readonly autoSpin: boolean }) => {
     const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
 
     if (autoSpin) {
-      // 压测模式：镜头沿走廊持续往返，保证渲染循环满载，fps 读数才有意义。
       const phase = Math.cos(frameState.clock.elapsedTime * 0.35);
       pointer.targetZ = HOME_Z - 3.2 + phase * 2.6;
       invalidate();
@@ -117,6 +160,13 @@ const CameraRig = ({ autoSpin }: { readonly autoSpin: boolean }) => {
 
     camera.position.set(pointer.x, EYE_HEIGHT, pointer.z);
     camera.lookAt(pointer.x * 0.35, EYE_HEIGHT + Math.tan(pointer.pitch) * 3.4, pointer.z - 4);
+
+    const nextBay = MathUtils.clamp(Math.round(-pointer.z / BAY_DEPTH), 0, Math.max(bayCount - 1, 0));
+
+    if (nextBay !== pointer.bay) {
+      pointer.bay = nextBay;
+      onCenterBayChange(nextBay);
+    }
 
     const settled =
       Math.abs(pointer.x - pointer.targetX) < 0.002 &&
@@ -159,7 +209,7 @@ const PerfProbe = () => {
 
 const Lights = () => (
   <>
-    <ambientLight intensity={0.45} />
+    <ambientLight intensity={0.32} />
     <directionalLight color="#ffe9f2" intensity={1.05} position={[2.6, 4, 3]} />
     <pointLight color="#ff7aa8" decay={2} distance={7} intensity={8} position={[0, 2.35, 1.2]} />
     <pointLight color="#78d8ff" decay={2} distance={10} intensity={7} position={[0, 2.1, -BAY_DEPTH * 2]} />
@@ -183,57 +233,128 @@ const Room = ({ bays }: { readonly bays: number }) => {
   );
 };
 
+/* ---------- 架子：全局实例化，draw call 与 Bay 数无关 ---------- */
+
 const Racks = ({ bays }: { readonly bays: number }) => {
-  const shelfHeights = [0.72, 1.22, 1.72];
-  const shelfWidth = 0.42;
+  const shelfRef = useRef<InstancedMesh>(null);
+  const panelRef = useRef<InstancedMesh>(null);
+  const dummy = useMemo(() => new Object3D(), []);
+
+  const shelfCount = bays * 2 * SHELF_HEIGHTS.length;
+  const panelCount = bays * 2;
+
+  useLayoutEffect(() => {
+    const shelves = shelfRef.current;
+    const panels = panelRef.current;
+
+    if (!shelves || !panels) {
+      return;
+    }
+
+    let shelfIndex = 0;
+    let panelIndex = 0;
+
+    for (let bay = 0; bay < bays; bay += 1) {
+      const bayZ = -bay * BAY_DEPTH;
+
+      for (const side of [-1, 1]) {
+        dummy.position.set(side * (RACK_X + 0.26), 1.45, bayZ);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        panels.setMatrixAt(panelIndex, dummy.matrix);
+        panelIndex += 1;
+
+        for (const height of SHELF_HEIGHTS) {
+          dummy.position.set(side * (RACK_X - 0.06), height, bayZ);
+          dummy.updateMatrix();
+          shelves.setMatrixAt(shelfIndex, dummy.matrix);
+          shelfIndex += 1;
+        }
+      }
+    }
+
+    shelves.instanceMatrix.needsUpdate = true;
+    panels.instanceMatrix.needsUpdate = true;
+    shelves.computeBoundingSphere();
+    panels.computeBoundingSphere();
+  }, [bays, dummy]);
 
   return (
-    <group>
-      {Array.from({ length: bays }, (_unused, bay) => (
-        <group key={`bay-${bay}`} position={[0, 0, -bay * BAY_DEPTH]}>
-          {[-1, 1].map((side) => (
-            <group key={`rack-${side}`}>
-              <mesh position={[side * (RACK_X + 0.26), 1.45, 0]}>
-                <boxGeometry args={[0.06, 2.3, BAY_DEPTH]} />
-                <meshStandardMaterial color="#191d28" metalness={0.25} roughness={0.8} />
-              </mesh>
-              {shelfHeights.map((height) => (
-                <mesh key={`shelf-${side}-${height}`} position={[side * (RACK_X - 0.06), height, 0]}>
-                  <boxGeometry args={[shelfWidth, 0.03, BAY_DEPTH]} />
-                  <meshStandardMaterial color="#232834" metalness={0.3} roughness={0.6} />
-                </mesh>
-              ))}
-            </group>
-          ))}
-        </group>
-      ))}
-    </group>
+    <>
+      <instancedMesh args={[undefined, undefined, Math.max(shelfCount, 1)]} ref={shelfRef}>
+        <boxGeometry args={[0.42, 0.03, BAY_DEPTH]} />
+        <meshStandardMaterial color="#232834" metalness={0.35} roughness={0.52} />
+      </instancedMesh>
+
+      <instancedMesh args={[undefined, undefined, Math.max(panelCount, 1)]} ref={panelRef}>
+        <boxGeometry args={[0.06, 2.3, BAY_DEPTH]} />
+        <meshStandardMaterial color="#191d28" metalness={0.3} roughness={0.7} />
+      </instancedMesh>
+    </>
   );
 };
 
-const CdInstances = ({ trackCount }: CorridorSceneProps) => {
+/* ---------- CD：按 Bay 分组，只挂载相机附近的段 ---------- */
+
+interface GalleryResources {
+  readonly disc: CylinderGeometry;
+  readonly discMaterial: MeshStandardMaterial;
+  readonly favoriteMaterial: MeshStandardMaterial;
+  readonly normalMaterial: MeshStandardMaterial;
+  readonly sleeve: BoxGeometry;
+}
+
+const useGalleryResources = (): GalleryResources => {
+  const resources = useMemo<GalleryResources>(
+    () => ({
+      sleeve: new BoxGeometry(SLEEVE_SIZE, SLEEVE_SIZE, 0.04),
+      disc: new CylinderGeometry(DISC_RADIUS, DISC_RADIUS, 0.008, 28).rotateX(Math.PI / 2),
+      normalMaterial: new MeshStandardMaterial({ color: "#1b2029", metalness: 0.35, roughness: 0.42 }),
+      favoriteMaterial: new MeshStandardMaterial({
+        color: "#4b3a20",
+        emissive: new Color("#c08a34"),
+        emissiveIntensity: 0.3,
+        metalness: 0.65,
+        roughness: 0.28
+      }),
+      discMaterial: new MeshStandardMaterial({ metalness: 0.8, roughness: 0.24 })
+    }),
+    []
+  );
+
+  useEffect(
+    () => () => {
+      resources.sleeve.dispose();
+      resources.disc.dispose();
+      resources.normalMaterial.dispose();
+      resources.favoriteMaterial.dispose();
+      resources.discMaterial.dispose();
+    },
+    [resources]
+  );
+
+  return resources;
+};
+
+interface BayCdsProps {
+  readonly absoluteIndices: readonly number[];
+  readonly resources: GalleryResources;
+}
+
+const BayCds = ({ absoluteIndices, resources }: BayCdsProps) => {
   const normalRef = useRef<InstancedMesh>(null);
   const favoriteRef = useRef<InstancedMesh>(null);
   const discRef = useRef<InstancedMesh>(null);
 
-  const indices = useMemo(() => Array.from({ length: trackCount }, (_unused, index) => index), [trackCount]);
-  const favorites = useMemo(() => indices.filter((index) => index % FAVORITE_STEP === 0), [indices]);
-  const normal = useMemo(() => indices.filter((index) => index % FAVORITE_STEP !== 0), [indices]);
-
-  const discGeometry = useMemo(() => new CylinderGeometry(DISC_RADIUS, DISC_RADIUS, 0.008, 48).rotateX(Math.PI / 2), []);
-
-  useEffect(
-    () => () => {
-      discGeometry.dispose();
-    },
-    [discGeometry]
-  );
+  const favorites = useMemo(() => absoluteIndices.filter((index) => index % FAVORITE_STEP === 0), [absoluteIndices]);
+  const normal = useMemo(() => absoluteIndices.filter((index) => index % FAVORITE_STEP !== 0), [absoluteIndices]);
 
   useLayoutEffect(() => {
     const dummy = new Object3D();
     const color = new Color();
 
-    const apply = (mesh: InstancedMesh | null, list: readonly number[], mode: "sleeve" | "disc"): void => {
+    const fill = (mesh: InstancedMesh | null, list: readonly number[], mode: "sleeve" | "disc"): void => {
       if (!mesh) {
         return;
       }
@@ -247,11 +368,11 @@ const CdInstances = ({ trackCount }: CorridorSceneProps) => {
 
         dummy.position.set(slot[0] + offset.x, slot[1], slot[2] + offset.z);
         dummy.rotation.set(0, rotationY, 0);
+        dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
         mesh.setMatrixAt(position, dummy.matrix);
 
         if (mode === "disc") {
-          // 盘面承载"封面"的角色：用曲目 id 的确定性色相代替真实封面（S5 接入封面纹理）。
           color.setHSL(getSeedHue(`track-${index}`) / 360, 0.62, 0.56);
           mesh.setColorAt(position, color);
         }
@@ -266,51 +387,51 @@ const CdInstances = ({ trackCount }: CorridorSceneProps) => {
       mesh.computeBoundingSphere();
     };
 
-    apply(normalRef.current, normal, "sleeve");
-    apply(favoriteRef.current, favorites, "sleeve");
-    apply(discRef.current, indices, "disc");
-  }, [favorites, indices, normal]);
+    fill(normalRef.current, normal, "sleeve");
+    fill(favoriteRef.current, favorites, "sleeve");
+    fill(discRef.current, absoluteIndices, "disc");
+  }, [absoluteIndices, favorites, normal]);
 
   return (
     <>
       <instancedMesh
-        key={`normal-${normal.length}`}
-        args={[undefined, undefined, Math.max(normal.length, 1)]}
+        args={[resources.sleeve, resources.normalMaterial, Math.max(normal.length, 1)]}
+        dispose={null}
         ref={normalRef}
-      >
-        <boxGeometry args={[SLEEVE_SIZE, SLEEVE_SIZE, 0.04]} />
-        <meshStandardMaterial color="#1b2029" metalness={0.25} roughness={0.5} />
-      </instancedMesh>
-
+      />
       <instancedMesh
-        key={`favorite-${favorites.length}`}
-        args={[undefined, undefined, Math.max(favorites.length, 1)]}
+        args={[resources.sleeve, resources.favoriteMaterial, Math.max(favorites.length, 1)]}
+        dispose={null}
         ref={favoriteRef}
-      >
-        <boxGeometry args={[SLEEVE_SIZE, SLEEVE_SIZE, 0.04]} />
-        <meshStandardMaterial
-          color="#4b3a20"
-          emissive="#c08a34"
-          emissiveIntensity={0.28}
-          metalness={0.55}
-          roughness={0.32}
-        />
-      </instancedMesh>
-
+      />
       <instancedMesh
-        key={`disc-${indices.length}`}
-        args={[discGeometry, undefined, Math.max(indices.length, 1)]}
+        args={[resources.disc, resources.discMaterial, Math.max(absoluteIndices.length, 1)]}
+        dispose={null}
         ref={discRef}
-      >
-        <meshStandardMaterial roughness={0.3} metalness={0.35} />
-      </instancedMesh>
+      />
     </>
   );
 };
 
-/** S2R-0 压测场景：一条 60 张 CD 的长廊，验证渲染成本与降级路径。 */
+/* ---------- 场景 ---------- */
+
+/** S2R-1a 压测场景：架子全局实例化 + CD 按 Bay 虚拟化。 */
 const CorridorScene = ({ autoSpin = false, trackCount }: CorridorSceneProps) => {
   const bays = getBayCount(trackCount);
+  const [centerBay, setCenterBay] = useState(0);
+  const resources = useGalleryResources();
+
+  const visibleBays = useMemo(() => {
+    const from = Math.max(0, centerBay - VISIBLE_BAY_RADIUS);
+    const to = Math.min(bays - 1, centerBay + VISIBLE_BAY_RADIUS);
+
+    return Array.from({ length: Math.max(to - from + 1, 1) }, (_unused, offset) => from + offset);
+  }, [bays, centerBay]);
+
+  useEffect(() => {
+    sceneStats.totalBays = bays;
+    sceneStats.mountedBays = visibleBays.length;
+  }, [bays, visibleBays.length]);
 
   return (
     <Canvas
@@ -321,11 +442,21 @@ const CorridorScene = ({ autoSpin = false, trackCount }: CorridorSceneProps) => 
     >
       <color args={["#0a0d16"]} attach="background" />
       <fog args={["#0a0d16", 3.5, 20]} attach="fog" />
+      <ProceduralEnvironment />
       <Lights />
       <Room bays={bays} />
       <Racks bays={bays} />
-      <CdInstances trackCount={trackCount} />
-      <CameraRig autoSpin={autoSpin} />
+      {visibleBays.map((bay) => (
+        <BayCds
+          absoluteIndices={Array.from(
+            { length: Math.min(SLOTS_PER_BAY, Math.max(trackCount - bay * SLOTS_PER_BAY, 0)) },
+            (_unused, offset) => bay * SLOTS_PER_BAY + offset
+          )}
+          key={`bay-${bay}`}
+          resources={resources}
+        />
+      ))}
+      <CameraRig autoSpin={autoSpin} bayCount={bays} onCenterBayChange={setCenterBay} />
       <PerfProbe />
     </Canvas>
   );
