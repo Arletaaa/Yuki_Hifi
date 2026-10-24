@@ -44,6 +44,12 @@ export const App = () => {
   const playTrack = usePlayerStore((state) => state.playTrack);
   const removeFromQueue = usePlayerStore((state) => state.removeFromQueue);
   const clearQueue = usePlayerStore((state) => state.clearQueue);
+  const playbackStatus = usePlayerStore((state) => state.status);
+  const positionSeconds = usePlayerStore((state) => state.positionSeconds);
+  const durationSeconds = usePlayerStore((state) => state.durationSeconds);
+  const togglePlayback = usePlayerStore((state) => state.togglePlayback);
+  const playNext = usePlayerStore((state) => state.playNext);
+  const playPrevious = usePlayerStore((state) => state.playPrevious);
   const setWallpaperPath = useWallpaperStore((state) => state.setPath);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
@@ -183,19 +189,20 @@ export const App = () => {
   if (scenePreview) {
     return (
       <SceneStage
-        autoSpin={getSceneAutoSpin()}
+        currentTrackId={currentTrackId}
+        durationSeconds={durationSeconds}
         favoriteGroupIds={favoriteGroupIds}
         groups={galleryGroups}
         onExit={() => {
           setScenePreview(false);
         }}
-        onOpenGroup={(group) => {
-          const firstTrack = library.find((track) => track.id === group.trackIds[0]);
-
-          if (firstTrack) {
-            playTrack(firstTrack);
-          }
-        }}
+        onNext={playNext}
+        onPlayTrack={playTrack}
+        onPrev={playPrevious}
+        onToggle={togglePlayback}
+        playing={playbackStatus === "playing"}
+        positionSeconds={positionSeconds}
+        tracks={library}
       />
     );
   }

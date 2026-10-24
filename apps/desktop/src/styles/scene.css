@@ -117,3 +117,126 @@
   transform: translateX(-50%);
   pointer-events: none;
 }
+/* ---------- 单排展厅 ---------- */
+
+.gallery-hint {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(8, 11, 18, 0.5);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.gallery-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: 0;
+  background: rgba(6, 9, 14, 0.32);
+  backdrop-filter: blur(10px) saturate(0.9);
+  cursor: pointer;
+}
+
+.gallery-controls {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transform: translateX(-50%);
+}
+
+.gallery-control {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(10, 13, 22, 0.6);
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    color var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease),
+    background var(--dur-base) var(--ease);
+}
+
+.gallery-control:hover {
+  border-color: var(--line-strong);
+  background: rgba(20, 26, 38, 0.8);
+  color: var(--text);
+}
+
+.gallery-control.is-primary {
+  width: 46px;
+  height: 46px;
+  border-color: var(--accent-line);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+}
+
+.gallery-control.is-quiet {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.scene-stage__perf {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.scene-stage__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(10, 13, 22, 0.55);
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scene-stage__fallback-button {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
