@@ -107,6 +107,19 @@
 - 验证：帧率 HUD 读数 + 截图 + `pnpm build` 体积对比。
 - 止损点：目标机器上无法稳定 45fps 时，先砍景深/接触阴影；仍不达标则退回 CSS 3D 或静态方案，并回写 ADR。
 
+**S2R-0 结论（2026-10-24 实测，headless Chromium 1280×820）**
+
+| 场景 | FPS | Draw calls | 三角形 |
+| --- | --- | --- | --- |
+| 60 张 CD（3 段 Bay，巡游） | 56 | 23 | 12,479 |
+| 240 张 CD（10 段 Bay，巡游，未虚拟化） | 42 | 79 | 49,862 |
+| 静止（800ms 无交互） | — | — | 渲染帧数归零 ✓ |
+
+- 主包体积不变（205 kB / 66.9 kB gzip）；three + R3F 全部落在懒加载 chunk（820 kB / **220.9 kB gzip**）。
+- **关键发现**：draw call 增长来自架子（每段 6 个 mesh），不是 CD（实例化后恒定 3 个）。240 张时 79 个调用里约 60 个是架子。
+- **结论**：S2R-1 必须做两件事——① 每段架子合并为单几何；② Bay 虚拟化（常驻 ±2）。否则 240 张会跌破 45fps。
+- 未验证项：Electron 内实测帧率（沙箱无法截取窗口），需真机跑 `ARLT_DEV_QUERY="?scene=1&spin=1" pnpm dev` 读 HUD。
+
 #### S2R-1 长廊与生长
 
 - 交付物：`getGalleryAnchor` / `getBayCount` 纯函数、Bay 空间模型（24 位/Bay、左右交替、4 层）、生长与消退动画、写实材质（PBR + 程序化环境光）、实例化与 Bay 虚拟化。
@@ -194,7 +207,8 @@
 | 渲染层截图 | 本地静态服务 + Chrome `--headless --screenshot` | 用于设计核对与回归对比 |
 | 渲染层预览 | `pnpm dev:web` + `?demo=1&track=1&page=queue&theme=light` | 开发模式注入示例曲库（`src/dev/`），生产包不含该代码 |
 | CDP 截图 | `.verify/tools/capture.mjs <url> <out.png> [w] [h]` | 等待渲染完成后截图并回显页面控制台错误 |
-| 场景帧率 | 开发模式 `?perf=1` 帧率 HUD | 读数 ≥ 50fps；静止 800ms 后渲染计数归零 |
+| 场景帧率 | 场景内 HUD（`?scene=1` 自动显示） | 读数 ≥ 45fps；静止 800ms 后渲染计数归零 |
+| 场景压测 | `ARLT_DEV_QUERY="?scene=1&spin=1" pnpm dev`，或浏览器 `?scene=1&spin=1&tracks=240` | `spin=1` 让镜头持续巡游，fps 才有意义；`tracks=N` 压测更长长廊 |
 | WebGL 降级 | 启动参数 `--disable-gpu --disable-webgl` | 断言自动进入列表视图且功能完整 |
 | 减少动效 | 系统设置或 `?motion=off` | 断言无位移动画、场景冻结为静态 |
 | 手工验收 | 按 S4/S5 的交互清单逐条点 | 播放、seek、模式、持久化 |

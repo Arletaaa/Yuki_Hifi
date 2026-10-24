@@ -6,9 +6,16 @@ import { LibraryPage, type LibraryScanStatus } from "./components/library-page";
 import { PlayerBar } from "./components/player-bar";
 import { QueuePage } from "./components/queue-page";
 import { SettingsPage } from "./components/settings-page";
-import { getDemoDirectoryPath, getDemoInitialPage } from "./dev/demo-params";
+import {
+  getDemoDirectoryPath,
+  getDemoInitialPage,
+  getSceneAutoSpin,
+  getScenePreviewTrackCount,
+  isScenePreviewRequested
+} from "./dev/demo-params";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
+import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useWallpaperStore } from "./store/wallpaper-store";
 
@@ -20,6 +27,7 @@ export const App = () => {
   useApplyPreferences();
 
   const [page, setPage] = useState<PageId>(() => getDemoInitialPage() ?? "library");
+  const [scenePreview, setScenePreview] = useState<boolean>(() => isScenePreviewRequested());
   const [directoryPath, setDirectoryPath] = useState<string | null>(() => getDemoDirectoryPath());
   const [scanStatus, setScanStatus] = useState<LibraryScanStatus>("idle");
   const [scanErrorMessage, setScanErrorMessage] = useState<string | null>(null);
@@ -113,6 +121,19 @@ export const App = () => {
       setWallpaperErrorMessage(getErrorMessage(error, "选择背景图片失败。"));
     }
   };
+
+  // S2R-0：开发模式下 `?scene=1` 打开 3D 长廊压测场景；S2R-1 会把它接成库的主视图。
+  if (scenePreview) {
+    return (
+      <SceneStage
+        autoSpin={getSceneAutoSpin()}
+        onExit={() => {
+          setScenePreview(false);
+        }}
+        trackCount={getScenePreviewTrackCount() ?? Math.max(library.length, 60)}
+      />
+    );
+  }
 
   return (
     <div className="app">

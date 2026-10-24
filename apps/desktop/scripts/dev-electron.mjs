@@ -47,11 +47,13 @@ if (!localUrl) {
   throw new Error("Vite dev server did not provide a local URL.");
 }
 
+// 开发期调试入口：ARLT_DEV_QUERY="?scene=1&spin=1" pnpm dev
+const devQuery = process.env.ARLT_DEV_QUERY ?? "";
 const electron = spawn(process.execPath, [electronEntry, mainEntry], {
   cwd: desktopRoot,
   env: {
     ...process.env,
-    VITE_DEV_SERVER_URL: localUrl
+    VITE_DEV_SERVER_URL: `${localUrl}${devQuery}`
   },
   shell: false,
   stdio: "inherit"
