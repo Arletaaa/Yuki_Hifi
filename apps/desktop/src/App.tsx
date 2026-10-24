@@ -16,6 +16,7 @@ import {
 import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useSaveSettings } from "./hooks/use-settings-sync";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
+import { groupTracksForGallery } from "./lib/album-groups";
 import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useSettingsStore } from "./store/settings-store";
@@ -47,18 +48,16 @@ export const App = () => {
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
 
-  // 场景需要"第几张 CD 是收藏"，而不是 id：把收藏映射成曲库下标。
-  const favoriteIndices = useMemo(() => {
+  // 展厅槽位 = 专辑/作者分组；收藏标记到"组"上（组内任意一首收藏即高亮）。
+  const galleryGroups = useMemo(() => groupTracksForGallery(library), [library]);
+
+  const favoriteGroupIds = useMemo(() => {
     const favoriteSet = new Set(favorites);
 
-    return library.reduce<number[]>((indices, track, index) => {
-      if (favoriteSet.has(track.id)) {
-        indices.push(index);
-      }
-
-      return indices;
-    }, []);
-  }, [favorites, library]);
+    return galleryGroups
+      .filter((group) => group.trackIds.some((trackId) => favoriteSet.has(trackId)))
+      .map((group) => group.id);
+  }, [favorites, galleryGroups]);
 
   const scanDirectoryRef = useRef<(path: string) => Promise<void>>(async () => {});
 
@@ -185,13 +184,18 @@ export const App = () => {
     return (
       <SceneStage
         autoSpin={getSceneAutoSpin()}
-        favoriteIndices={favoriteIndices}
-        onPlayTrack={playTrack}
+        favoriteGroupIds={favoriteGroupIds}
+        groups={galleryGroups}
         onExit={() => {
           setScenePreview(false);
         }}
-        trackCount={getScenePreviewTrackCount() ?? Math.max(library.length, 60)}
-        tracks={library}
+        onOpenGroup={(group) => {
+          const firstTrack = library.find((track) => track.id === group.trackIds[0]);
+
+          if (firstTrack) {
+            playTrack(firstTrack);
+          }
+        }}
       />
     );
   }

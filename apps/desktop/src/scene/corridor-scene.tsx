@@ -6,6 +6,7 @@ import {
   CylinderGeometry,
   InstancedMesh,
   MathUtils,
+  Mesh,
   MeshStandardMaterial,
   Object3D,
   PMREMGenerator,
@@ -14,7 +15,8 @@ import {
   TextureLoader
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { createCoverMediaUrl, type Track } from "@arlhifi/shared";
+import { createCoverMediaUrl } from "@arlhifi/shared";
+import type { GalleryGroup } from "../lib/album-groups";
 import { getSeedHue } from "../lib/seed";
 import {
   BAY_DEPTH,
@@ -36,10 +38,10 @@ const SHELF_HEIGHTS = [0.72, 1.22, 1.72];
 
 interface CorridorSceneProps {
   readonly autoSpin?: boolean;
-  readonly favoriteIndices?: readonly number[];
-  readonly onPlayTrack: (track: Track) => void;
-  readonly trackCount: number;
-  readonly tracks: readonly Track[];
+  readonly favoriteGroupIds?: readonly string[];
+  readonly groups: readonly GalleryGroup[];
+  readonly onHoverChange: (label: string | null) => void;
+  readonly onOpenGroup: (group: GalleryGroup) => void;
 }
 
 const MAX_COVER_TEXTURES = 48;
@@ -114,68 +116,113 @@ const useCoverTexture = (coverPath: string | null): Texture | null => {
 
 /** 当前 Bay 的 CD 用真实封面贴图绘制；更远的 Bay 仍是实例化色块。 */
 const CoverPlane = ({
+  group,
   index,
-  onPlay,
-  track
+  onHoverChange,
+  onOpen
 }: {
+  readonly group: GalleryGroup;
   readonly index: number;
-  readonly onPlay: (track: Track) => void;
-  readonly track: Track;
+  readonly onHoverChange: (label: string | null) => void;
+  readonly onOpen: (group: GalleryGroup) => void;
 }) => {
-  const texture = useCoverTexture(track.coverPath);
+  const texture = useCoverTexture(group.coverPath);
+  const invalidate = useThree((state) => state.invalidate);
+  const meshRef = useRef<Mesh>(null);
+  const hovered = useRef(false);
   const { position, rotationY } = getSlotTransform(index);
-  const offset = DISC_OFFSET + 0.002;
+
+  useFrame((_state, delta) => {
+    const mesh = meshRef.current;
+
+    if (!mesh) {
+      return;
+    }
+
+    // 帧率无关阻尼：悬停时把 CD 从架上抽出、朝向镜头并轻微放大。
+    const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
+    const target = hovered.current ? 1 : 0;
+
+    mesh.position.z = MathUtils.lerp(mesh.position.z, target * 0.024 + 0.002, damping);
+    mesh.rotation.y = MathUtils.lerp(mesh.rotation.y, target * 0.14, damping);
+    mesh.rotation.z = MathUtils.lerp(mesh.rotation.z, target * -0.03, damping);
+    const scale = MathUtils.lerp(mesh.scale.x, 1 + target * 0.04, damping);
+    mesh.scale.setScalar(scale);
+
+    const settled =
+      Math.abs(mesh.position.z - (target * 0.024 + 0.002)) < 0.0005 &&
+      Math.abs(mesh.rotation.y - target * 0.14) < 0.001 &&
+      Math.abs(scale - (1 + target * 0.04)) < 0.0005;
+
+    if (!settled) {
+      invalidate();
+    }
+  });
 
   return (
-    <mesh
-      onClick={(event) => {
-        event.stopPropagation();
-        onPlay(track);
-      }}
-      position={[
-        position[0] + Math.sin(rotationY) * offset,
-        position[1],
-        position[2] + Math.cos(rotationY) * offset
-      ]}
-      rotation={[0, rotationY, 0]}
-    >
-      <circleGeometry args={[DISC_RADIUS, 40]} />
-      {texture ? (
-        <meshStandardMaterial map={texture} metalness={0.3} roughness={0.32} toneMapped={false} />
-      ) : (
-        // 没有封面时与实例化盘面同色同材质，肉眼保持连续，同时保留点击区域。
-        <meshStandardMaterial
-          color={`hsl(${getSeedHue(track.id)}, 62%, 56%)`}
-          metalness={0.35}
-          roughness={0.3}
-        />
-      )}
-    </mesh>
+    <group position={[position[0], position[1], position[2]]} rotation={[0, rotationY, 0]}>
+      <mesh
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen(group);
+        }}
+        onPointerOut={() => {
+          hovered.current = false;
+          onHoverChange(null);
+          invalidate();
+        }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          hovered.current = true;
+          onHoverChange(`${group.artist} · ${group.title}（${group.trackIds.length} 首）`);
+          invalidate();
+        }}
+        ref={meshRef}
+      >
+        <circleGeometry args={[DISC_RADIUS, 40]} />
+        {texture ? (
+          <meshStandardMaterial map={texture} metalness={0.3} roughness={0.32} toneMapped={false} />
+        ) : (
+          <meshStandardMaterial color={`hsl(${getSeedHue(group.id)}, 62%, 56%)`} metalness={0.35} roughness={0.3} />
+        )}
+      </mesh>
+    </group>
   );
 };
 
 const BayCoverGrid = ({
   bay,
-  onPlay,
-  tracks
+  groups,
+  onHoverChange,
+  onOpen
 }: {
   readonly bay: number;
-  readonly onPlay: (track: Track) => void;
-  readonly tracks: readonly Track[];
+  readonly groups: readonly GalleryGroup[];
+  readonly onHoverChange: (label: string | null) => void;
+  readonly onOpen: (group: GalleryGroup) => void;
 }) => {
   const start = bay * SLOTS_PER_BAY;
-  const slice = tracks.slice(start, start + SLOTS_PER_BAY);
+  const slice = groups.slice(start, start + SLOTS_PER_BAY);
 
   return (
     <>
-      {slice.map((track, offset) => (
-        <CoverPlane index={start + offset} key={track.id} onPlay={onPlay} track={track} />
+      {slice.map((group, offset) => (
+        <CoverPlane
+          group={group}
+          index={start + offset}
+          key={group.id}
+          onHoverChange={onHoverChange}
+          onOpen={onOpen}
+        />
       ))}
     </>
   );
 };
-
-/* ---------- 程序化环境光：不下载 HDRI，也让金属盘面有反射 ---------- */
+interface CameraRigProps {
+  readonly autoSpin: boolean;
+  readonly bayCount: number;
+  readonly onCenterBayChange: (bay: number) => void;
+}
 
 const ProceduralEnvironment = () => {
   const { gl, scene } = useThree();
@@ -196,14 +243,6 @@ const ProceduralEnvironment = () => {
 
   return null;
 };
-
-/* ---------- 镜头 ---------- */
-
-interface CameraRigProps {
-  readonly autoSpin: boolean;
-  readonly bayCount: number;
-  readonly onCenterBayChange: (bay: number) => void;
-}
 
 const CameraRig = ({ autoSpin, bayCount, onCenterBayChange }: CameraRigProps) => {
   const { camera, gl, invalidate } = useThree();
@@ -562,11 +601,30 @@ const BayCds = ({ absoluteIndices, favoriteSet, resources }: BayCdsProps) => {
 /* ---------- 场景 ---------- */
 
 /** S2R-1a 压测场景：架子全局实例化 + CD 按 Bay 虚拟化。 */
-const CorridorScene = ({ autoSpin = false, favoriteIndices = [], onPlayTrack, trackCount, tracks }: CorridorSceneProps) => {
-  const bays = getBayCount(trackCount);
+const CorridorScene = ({
+  autoSpin = false,
+  favoriteGroupIds = [],
+  groups,
+  onHoverChange,
+  onOpenGroup
+}: CorridorSceneProps) => {
+  const groupCount = groups.length;
+  const bays = getBayCount(groupCount);
   const [centerBay, setCenterBay] = useState(0);
   const resources = useGalleryResources();
-  const favoriteSet = useMemo(() => new Set(favoriteIndices), [favoriteIndices]);
+
+  const favoriteSet = useMemo(() => {
+    const ids = new Set(favoriteGroupIds);
+    const indices = new Set<number>();
+
+    groups.forEach((group, index) => {
+      if (ids.has(group.id)) {
+        indices.add(index);
+      }
+    });
+
+    return indices;
+  }, [favoriteGroupIds, groups]);
 
   const visibleBays = useMemo(() => {
     const from = Math.max(0, centerBay - VISIBLE_BAY_RADIUS);
@@ -596,15 +654,15 @@ const CorridorScene = ({ autoSpin = false, favoriteIndices = [], onPlayTrack, tr
       {visibleBays.map((bay) => (
         <BayCds
           absoluteIndices={Array.from(
-            { length: Math.min(SLOTS_PER_BAY, Math.max(trackCount - bay * SLOTS_PER_BAY, 0)) },
+            { length: Math.min(SLOTS_PER_BAY, Math.max(groupCount - bay * SLOTS_PER_BAY, 0)) },
             (_unused, offset) => bay * SLOTS_PER_BAY + offset
           )}
-          key={`bay-${bay}`}
           favoriteSet={favoriteSet}
+          key={`bay-${bay}`}
           resources={resources}
         />
       ))}
-      <BayCoverGrid bay={centerBay} onPlay={onPlayTrack} tracks={tracks} />
+      <BayCoverGrid bay={centerBay} groups={groups} onHoverChange={onHoverChange} onOpen={onOpenGroup} />
       <CameraRig autoSpin={autoSpin} bayCount={bays} onCenterBayChange={setCenterBay} />
       <PerfProbe />
     </Canvas>

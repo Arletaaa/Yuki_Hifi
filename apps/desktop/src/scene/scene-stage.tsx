@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from "react";
-import type { Track } from "@arlhifi/shared";
+import type { GalleryGroup } from "../lib/album-groups";
 import { Button } from "@arlhifi/ui";
 import { sceneStats, useFrameRateSample } from "./perf";
 import { isWebGL2Available } from "./webgl";
@@ -8,16 +8,16 @@ const CorridorScene = lazy(() => import("./corridor-scene"));
 
 export interface SceneStageProps {
   readonly autoSpin: boolean;
-  readonly favoriteIndices: readonly number[];
+  readonly favoriteGroupIds: readonly string[];
+  readonly groups: readonly GalleryGroup[];
   readonly onExit: () => void;
-  readonly onPlayTrack: (track: Track) => void;
-  readonly trackCount: number;
-  readonly tracks: readonly Track[];
+  readonly onOpenGroup: (group: GalleryGroup) => void;
 }
 
 /** S2R-0 实验舞台：验证渲染成本、交互手感与降级路径；S2R-1 才接入正式导航。 */
-export const SceneStage = ({ autoSpin, favoriteIndices, onExit, onPlayTrack, trackCount, tracks }: SceneStageProps) => {
+export const SceneStage = ({ autoSpin, favoriteGroupIds, groups, onExit, onOpenGroup }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
+  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const sample = useFrameRateSample();
 
   return (
@@ -27,10 +27,10 @@ export const SceneStage = ({ autoSpin, favoriteIndices, onExit, onPlayTrack, tra
           <Suspense fallback={<p className="scene-stage__loading">正在初始化渲染器…</p>}>
             <CorridorScene
               autoSpin={autoSpin}
-              favoriteIndices={favoriteIndices}
-              onPlayTrack={onPlayTrack}
-              trackCount={trackCount}
-              tracks={tracks}
+              favoriteGroupIds={favoriteGroupIds}
+              groups={groups}
+              onHoverChange={setHoverLabel}
+              onOpenGroup={onOpenGroup}
             />
           </Suspense>
         ) : (
@@ -77,7 +77,7 @@ export const SceneStage = ({ autoSpin, favoriteIndices, onExit, onPlayTrack, tra
           </div>
           <div>
             <dt>CD</dt>
-            <dd>{trackCount}</dd>
+            <dd>{groups.length}</dd>
           </div>
         </dl>
       </div>
@@ -88,7 +88,11 @@ export const SceneStage = ({ autoSpin, favoriteIndices, onExit, onPlayTrack, tra
         </Button>
       </div>
 
-      <p className="scene-stage__hint">拖拽平移 · 滚轮推进 · 双击复位</p>
+      {hoverLabel ? (
+        <p className="scene-stage__hint scene-stage__hint--active">{hoverLabel}</p>
+      ) : (
+        <p className="scene-stage__hint">拖拽平移 · 滚轮推进 · 双击复位 · 点击 CD 播放</p>
+      )}
     </div>
   );
 };
