@@ -38,7 +38,9 @@ This file merges the project's existing engineering constraints with the behavio
 - Do not use `any` unless a nearby comment explains why it is unavoidable.
 - The current playback MVP stays on `HTMLAudioElement`; do not introduce a real audio decoding core yet.
 - Keep audio-domain logic compatible with a future `audio-core` boundary.
-- The main desktop player must not add a right-side stage, character stage, Live2D surface, MV playback, or a dynamic visual stage.
+- Do not add a decorative right-side stage, character stage, Live2D surface, or MV/video background.
+- A real-time 3D collection scene (CD gallery + playback stage) is allowed because the scene *is* the library and navigation, not decoration. The exact boundary is defined in `docs/decisions/005-scene-gallery.md`; the test is "does every 3D element map to a real favorite track or playback state".
+- Scene code must stay in the renderer and behind the preload boundary; it may load cover images only through the existing controlled media protocol.
 - React renderer code must keep using the Electron preload boundary instead of directly accessing Node or Electron APIs.
 - Prefer small, reviewable changes and keep tests focused on the changed behavior.
 

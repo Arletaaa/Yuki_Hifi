@@ -22,8 +22,9 @@ Arlt HiFi Player — local HiFi desktop music player built on Electron + React +
 apps/desktop/          Electron + React desktop app
   electron/              Main process (preload, media protocol, music scanner)
   src/                   Renderer (React components, hooks, stores)
+  src/scene/             (S2R) three.js + react-three-fiber collection scene
 packages/shared/       Shared types, mock data, utilities
-packages/ui/           Base UI components (Panel, SoftButton, cn)
+packages/ui/           Base UI components (Button, IconButton, Knob, Panel, SegmentedControl, cn)
 packages/agent-harness/  AI harness: constraints, checklists, task templates
 docs/                  Product docs, ADRs, prompts, evals
 fixtures/              Test fixture placeholders (audio, themes, visuals)
@@ -35,16 +36,17 @@ fixtures/              Test fixture placeholders (audio, themes, visuals)
 - **Playback MVP**: `HTMLAudioElement` via `useAudioPlayback` hook. Do NOT introduce Rust audio-core yet.
 - **Security boundary**: React renderer uses Electron preload API (contextBridge). Never access Node/Electron APIs directly from renderer.
 - **Audio files**: `flac`, `wav`, `mp3`, `m4a`, `ogg` scanned via main process `music-scanner.ts`.
-- **Styles**: Tailwind CSS + custom properties in `src/styles/`. Use `packages/ui` for shared components.
-- **Testing**: Vitest with jsdom. Tests colocated with source (`*.test.ts`/`*.test.tsx`).
+- **Styles**: design tokens in `packages/ui/src/styles.css`, layout in `apps/desktop/src/styles/`. Tailwind is still installed for preflight/utilities, but new UI uses semantic classes + tokens.
+- **Testing**: Vitest in a node environment; tests colocated with source (`*.test.ts`/`*.test.tsx`). Component-level render tests are not set up yet.
+- **Scene (S2R)**: three.js + react-three-fiber, lazy-loaded, cover textures only via `arlt-hifi-media://image/...`. The 3D gallery is the library's primary view; the list view remains as the accessible/fallback path.
 
 ## Hard Constraints
 
 - TypeScript strict mode. No `any` without a comment explaining why.
 - Current playback stays on `HTMLAudioElement` — no real audio decoding core.
 - Keep audio-domain logic compatible with a future `audio-core` boundary.
-- Main player UI must NOT add: right-side stage, character stage, Live2D, MV playback, dynamic visual stage.
-- React code must use Electron preload boundary — never call Node/Electron APIs directly.
+- No decorative stage, character stage, Live2D, or MV/video background. A 3D collection scene *is* allowed when every 3D element maps to a real favorite track or playback state (see `docs/decisions/005-scene-gallery.md`).
+- React code must use Electron preload boundary — never call Node/Electron APIs directly. The scene must not read files itself.
 - Prefer `packages/ui` and `packages/shared` reuse over inline duplication.
 
 ## Behavioral Constraints
