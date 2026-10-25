@@ -14,7 +14,10 @@
 
 | 素材 | 来源 | 许可 | 状态 |
 | --- | --- | --- | --- |
-| CD with Jewel Case | [Sketchfab: cd-jewel-case](https://sketchfab.com/3d-models/cd-jewel-case-f6c8386e76e54918b551ebdd276479dd) | **CC-BY**（**必须署名**） | 原包只含 `.blend` + 贴图，需先导出 `.glb` |
+| CD Jewel Case（`apps/desktop/public/models/cd-case.glb`） | [Sketchfab: cd-jewel-case](https://sketchfab.com/3d-models/cd-jewel-case-f6c8386e76e54918b551ebdd276479dd) | **CC-BY 4.0 — 必须署名** | 已导出 GLB（1.72 MB）。**作者：蓝人组合**。署名文案：`"CD Jewel Case" by 蓝人组合, licensed CC-BY 4.0, via Sketchfab` |
+
+> 已接入但**暂未启用**：模型的朝向与尺寸尚未归一化（正面未朝 +Z、包围盒约为目标尺寸 2 倍），
+> 直接替换后每张 CD 会侧转并被裁切。待归一化后再切换，避免交付视觉错误。
 
 > 使用该 CD 盒模型时，界面「关于」页与本文档都必须标注作者与来源。
 > 作者名称待补：导出 GLB 时请一并提供 Sketchfab 页面上的作者显示名。
