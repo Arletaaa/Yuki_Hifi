@@ -171,23 +171,15 @@ const Disc = ({
       >
         <CaseModel coverTexture={texture} tint={tint} />
         {/* 封面：贴在最前面，等价于"内页贴着前盖内侧"，确保可见 */}
-        <mesh position={[0, 0, 0.029]} scale={scale}>
-          <planeGeometry args={[0.50, 0.50]} />
+        <mesh position={[0.022, 0, 0.029]} scale={scale}>
+          <planeGeometry args={[0.46, 0.46]} />
           {texture ? (
             <meshStandardMaterial map={texture} metalness={0.02} roughness={0.7} toneMapped={false} />
           ) : (
             <meshStandardMaterial color={tint} metalness={0.02} roughness={0.72} />
           )}
         </mesh>
-        {/* 书脊/侧边高光：收藏为金色 */}
-        <mesh position={[-0.264, 0, 0]}>
-          <boxGeometry args={[0.012, 0.52, 0.075]} />
-          <meshStandardMaterial
-            color={isFavorite ? "#c9a25a" : "#2a3140"}
-            metalness={isFavorite ? 0.9 : 0.3}
-            roughness={isFavorite ? 0.25 : 0.5}
-          />
-        </mesh>
+
         {isCurrent ? (
           <mesh position={[0, -0.3, 0.045]}>
             <planeGeometry args={[0.3, 0.008]} />
@@ -217,7 +209,7 @@ const WallSurface = () => {
 
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(7, 3.4);
+      texture.repeat.set(12, 1);
       texture.needsUpdate = true;
     }
 
@@ -255,9 +247,7 @@ const CabinetSurface = () => {
 
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(0.55, 2.6);
-      texture.rotation = Math.PI / 2;
-      texture.center.set(0.5, 0.5);
+      texture.repeat.set(4, 0.12);
       texture.needsUpdate = true;
     }
 
