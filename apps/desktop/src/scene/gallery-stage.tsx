@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box3, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { Box3, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
@@ -29,11 +29,11 @@ const ProceduralEnvironment = () => {
   return null;
 };
 
-const GAP = 0.62;
+const GAP = 0.80;
 const DISC_RADIUS = 0.26;
-const BASE_Y = 1.26;
-const CAMERA_POSITION: readonly [number, number, number] = [0, 1.86, 4.55];
-const LOOK_AT: readonly [number, number, number] = [0, 1.52, 0];
+const BASE_Y = 1.30;
+const CAMERA_POSITION: readonly [number, number, number] = [0, 1.72, 3.50];
+const LOOK_AT: readonly [number, number, number] = [0, 1.30, 0];
 
 /** 编辑体色板：低饱和、成套，避免随机彩虹色。 */
 const PALETTE = ["#c96f5a", "#8fa7b8", "#31506b", "#8a9a52", "#c8a06a", "#8c6b86", "#9fb0b8", "#a8563f"];
@@ -68,6 +68,7 @@ const DISC_NODES = new Set(["Object_13", "Object_14"]);
 /** 透明宝石盒（Sketchfab "CD Jewel Case"，作者 蓝人组合，CC-BY 4.0）。 */
 const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | null; readonly tint: string }) => {
   const { scene } = useLoader(GLTFLoader, "/models/cd-case.glb");
+  const ref = useRef<Group>(null);
 
   const prepared = useMemo(() => {
     const clone = scene.clone(true);
@@ -109,11 +110,43 @@ const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | nu
     wrapper.rotation.y = -Math.PI / 2;
     wrapper.scale.setScalar(fit);
     wrapper.add(clone);
+    wrapper.updateMatrixWorld(true);
 
-    return wrapper;
+    // 用内页的包围盒定位封面，保证与窗口严丝合缝（不再靠手调偏移）。
+    const coverMesh = clone.getObjectByName(COVER_NODE);
+    const coverBox = new Box3().setFromObject(coverMesh ?? clone);
+    const coverCenter = coverBox.getCenter(new Vector3());
+    const coverSize = coverBox.getSize(new Vector3());
+
+    const root = new Group();
+    root.add(wrapper);
+
+    const coverPlane = new Mesh(
+      new PlaneGeometry(coverSize.x * 0.9, coverSize.y * 0.9),
+      new MeshStandardMaterial({ color: tint, metalness: 0.02, roughness: 0.7 })
+    );
+    coverPlane.position.set(coverCenter.x, coverCenter.y, coverBox.max.z + 0.004);
+    root.add(coverPlane);
+
+    root.userData.coverPlane = coverPlane;
+
+    return root;
   }, [coverTexture, scene, tint]);
 
-  return <primitive object={prepared} />;
+  useEffect(() => {
+    const plane = (ref.current as unknown as Group | null)?.userData.coverPlane as Mesh | undefined;
+
+    if (!plane) {
+      return;
+    }
+
+    const material = plane.material as MeshStandardMaterial;
+    material.map = coverTexture;
+    material.color.set(coverTexture ? "#ffffff" : tint);
+    material.needsUpdate = true;
+  }, [coverTexture, tint]);
+
+  return <primitive object={prepared} ref={ref} />;
 };
 
 const Disc = ({
@@ -170,15 +203,7 @@ const Disc = ({
         ref={groupRef}
       >
         <CaseModel coverTexture={texture} tint={tint} />
-        {/* 封面：贴在最前面，等价于"内页贴着前盖内侧"，确保可见 */}
-        <mesh position={[0.022, 0, 0.029]} scale={scale}>
-          <planeGeometry args={[0.46, 0.46]} />
-          {texture ? (
-            <meshStandardMaterial map={texture} metalness={0.02} roughness={0.7} toneMapped={false} />
-          ) : (
-            <meshStandardMaterial color={tint} metalness={0.02} roughness={0.72} />
-          )}
-        </mesh>
+
 
         {isCurrent ? (
           <mesh position={[0, -0.3, 0.045]}>
@@ -209,7 +234,7 @@ const WallSurface = () => {
 
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(12, 1);
+      texture.repeat.set(26, 2.2);
       texture.needsUpdate = true;
     }
 
@@ -220,7 +245,7 @@ const WallSurface = () => {
 
   return (
     <meshStandardMaterial
-      color="#cdc6ba"
+      color="#9d9186"
       map={map ?? null}
       metalness={0.02}
       normalMap={normalMap ?? null}
@@ -285,7 +310,7 @@ const DeskSurface = () => {
 
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(8, 2);
+      texture.repeat.set(18, 0.3);
       texture.needsUpdate = true;
     }
 
