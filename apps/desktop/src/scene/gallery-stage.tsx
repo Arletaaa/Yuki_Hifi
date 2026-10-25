@@ -1,6 +1,6 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Color, Group, MathUtils, Mesh, PMREMGenerator } from "three";
+import { Color, Group, MathUtils, Mesh, PMREMGenerator, RepeatWrapping, SRGBColorSpace, TextureLoader } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
@@ -143,13 +143,70 @@ const Disc = ({
 };
 /* ---------- 展架 ---------- */
 
-const Shelf = () => (
-  <group>
-    {/* 台面：暖色木，前缘略亮 */}
+/** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
+const DeskSurface = () => {
+  const textures = useLoader(TextureLoader, [
+    "/textures/wood066-color.jpg",
+    "/textures/wood066-normal.jpg",
+    "/textures/wood066-roughness.jpg"
+  ]);
+  const [map, normalMap, roughnessMap] = textures;
+
+  useEffect(() => {
+    for (const texture of textures) {
+      if (!texture) {
+        continue;
+      }
+
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.repeat.set(8, 2);
+      texture.needsUpdate = true;
+    }
+
+    if (map) {
+      map.colorSpace = SRGBColorSpace;
+    }
+  }, [map, textures]);
+
+  return (
     <mesh position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
       <boxGeometry args={[40, 0.12, 0.62]} />
-      <meshStandardMaterial color="#6b4f34" metalness={0.05} roughness={0.55} />
+      <meshStandardMaterial
+        map={map ?? null}
+        metalness={0.04}
+        normalMap={normalMap ?? null}
+        roughness={0.72}
+        roughnessMap={roughnessMap ?? null}
+      />
     </mesh>
+  );
+};
+
+/** 墙面植物阴影：用树叶 alpha 贴图投影（ambientCG LeafSet015，CC0）。 */
+const LeafShadow = () => {
+  const textures = useLoader(TextureLoader, ["/textures/leaf015-color.jpg", "/textures/leaf015-opacity.jpg"]);
+  const [color, opacity] = textures;
+
+  return (
+    <mesh position={[2.0, BASE_Y + 1.30, -0.26]} rotation={[0, 0, -0.18]}>
+      <planeGeometry args={[5.2, 2.8]} />
+      <meshBasicMaterial
+        alphaMap={opacity ?? null}
+        color="#161210"
+        depthWrite={false}
+        map={color ?? null}
+        opacity={0.32}
+        toneMapped={false}
+        transparent
+      />
+    </mesh>
+  );
+};
+const Shelf = () => (
+  <group>
+    {/* 台面：真实木纹 */}
+    <DeskSurface />
     <mesh position={[0, BASE_Y - 0.26, 0.36]}>
       <boxGeometry args={[40, 0.02, 0.02]} />
       <meshStandardMaterial color="#c89a68" metalness={0.2} roughness={0.4} emissive="#3a2413" emissiveIntensity={0.4} />
@@ -164,11 +221,7 @@ const Shelf = () => (
       <boxGeometry args={[40, 3.4, 0.08]} />
       <meshStandardMaterial color="#4a423a" metalness={0.05} roughness={0.95} />
     </mesh>
-    {/* 墙上光带（伪造日光照在墙面） */}
-    <mesh position={[3.4, BASE_Y + 0.9, -0.28]} rotation={[0, 0, -0.5]}>
-      <planeGeometry args={[9, 1.5]} />
-      <meshBasicMaterial color="#d9b98c" opacity={0.16} toneMapped={false} transparent />
-    </mesh>
+    <LeafShadow />
   </group>
 );
 
