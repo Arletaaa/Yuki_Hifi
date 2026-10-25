@@ -8,7 +8,10 @@
 | 文件 | 素材 | 作者 / 来源 | 许可 | 用途 |
 | --- | --- | --- | --- | --- |
 | `wood066-color.jpg`<br>`wood066-normal.jpg`<br>`wood066-roughness.jpg` | Wood066 1K JPG | [ambientCG](https://ambientcg.com/view?asset=Wood066) | **CC0**（无需署名） | 展厅台面 |
-| `leaf015-color.jpg`<br>`leaf015-opacity.jpg` | LeafSet015 1K JPG | [ambientCG](https://ambientcg.com/view?asset=LeafSet015) | **CC0**（无需署名） | 墙面植物阴影遮罩 |
+| `wood008-color.jpg`<br>`wood008-normal.jpg`<br>`wood008-roughness.jpg` | Wood008 1K JPG（竖木纹） | [ambientCG](https://ambientcg.com/view?asset=Wood008) | **CC0**（无需署名） | 柜体立面 |
+| `wall-color.jpg`<br>`wall-normal.jpg`<br>`wall-roughness.jpg` | Fabric028 1K JPG | [ambientCG](https://ambientcg.com/view?asset=Fabric028) | **CC0**（无需署名） | 展厅墙皮 |
+
+> `leaf015-*` 目前未使用（墙面已改用 Fabric028，树叶阴影方案暂缓）。
 
 ## 待接入
 

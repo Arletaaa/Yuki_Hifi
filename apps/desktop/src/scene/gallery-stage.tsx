@@ -172,7 +172,7 @@ const Disc = ({
         <CaseModel coverTexture={texture} tint={tint} />
         {/* 封面：贴在最前面，等价于"内页贴着前盖内侧"，确保可见 */}
         <mesh position={[0, 0, 0.029]} scale={scale}>
-          <planeGeometry args={[0.44, 0.44]} />
+          <planeGeometry args={[0.50, 0.50]} />
           {texture ? (
             <meshStandardMaterial map={texture} metalness={0.02} roughness={0.7} toneMapped={false} />
           ) : (
@@ -199,6 +199,84 @@ const Disc = ({
   );
 };
 /* ---------- 展架 ---------- */
+
+/** 墙面墙皮（Fabric028，CC0）。 */
+const WallSurface = () => {
+  const textures = useLoader(TextureLoader, [
+    "/textures/wall-color.jpg",
+    "/textures/wall-normal.jpg",
+    "/textures/wall-roughness.jpg"
+  ]);
+  const [map, normalMap, roughnessMap] = textures;
+
+  useEffect(() => {
+    for (const texture of textures) {
+      if (!texture) {
+        continue;
+      }
+
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.repeat.set(7, 3.4);
+      texture.needsUpdate = true;
+    }
+
+    if (map) {
+      map.colorSpace = SRGBColorSpace;
+    }
+  }, [map, textures]);
+
+  return (
+    <meshStandardMaterial
+      color="#cdc6ba"
+      map={map ?? null}
+      metalness={0.02}
+      normalMap={normalMap ?? null}
+      roughness={0.92}
+      roughnessMap={roughnessMap ?? null}
+    />
+  );
+};
+
+/** 柜体立面（Wood008 竖纹，CC0）。 */
+const CabinetSurface = () => {
+  const textures = useLoader(TextureLoader, [
+    "/textures/wood008-color.jpg",
+    "/textures/wood008-normal.jpg",
+    "/textures/wood008-roughness.jpg"
+  ]);
+  const [map, normalMap, roughnessMap] = textures;
+
+  useEffect(() => {
+    for (const texture of textures) {
+      if (!texture) {
+        continue;
+      }
+
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.repeat.set(0.55, 2.6);
+      texture.rotation = Math.PI / 2;
+      texture.center.set(0.5, 0.5);
+      texture.needsUpdate = true;
+    }
+
+    if (map) {
+      map.colorSpace = SRGBColorSpace;
+    }
+  }, [map, textures]);
+
+  return (
+    <meshStandardMaterial
+      color="#c2b09a"
+      map={map ?? null}
+      metalness={0.05}
+      normalMap={normalMap ?? null}
+      roughness={0.7}
+      roughnessMap={roughnessMap ?? null}
+    />
+  );
+};
 
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
 const DeskSurface = () => {
@@ -240,26 +318,6 @@ const DeskSurface = () => {
   );
 };
 
-/** 墙面植物阴影：用树叶 alpha 贴图投影（ambientCG LeafSet015，CC0）。 */
-const LeafShadow = () => {
-  const textures = useLoader(TextureLoader, ["/textures/leaf015-color.jpg", "/textures/leaf015-opacity.jpg"]);
-  const [color, opacity] = textures;
-
-  return (
-    <mesh position={[2.0, BASE_Y + 1.30, -0.26]} rotation={[0, 0, -0.18]}>
-      <planeGeometry args={[5.2, 2.8]} />
-      <meshBasicMaterial
-        alphaMap={opacity ?? null}
-        color="#161210"
-        depthWrite={false}
-        map={color ?? null}
-        opacity={0.32}
-        toneMapped={false}
-        transparent
-      />
-    </mesh>
-  );
-};
 const Shelf = () => (
   <group>
     {/* 台面：真实木纹 */}
@@ -271,14 +329,13 @@ const Shelf = () => (
     {/* 台面下方深色立面 */}
     <mesh position={[0, BASE_Y - 0.95, 0.2]}>
       <boxGeometry args={[40, 1.2, 0.08]} />
-      <meshStandardMaterial color="#2a1d14" metalness={0.1} roughness={0.75} />
+      <CabinetSurface />
     </mesh>
     {/* 背墙 */}
     <mesh position={[0, BASE_Y + 0.55, -0.34]}>
       <boxGeometry args={[40, 3.4, 0.08]} />
-      <meshStandardMaterial color="#4a423a" metalness={0.05} roughness={0.95} />
+      <WallSurface />
     </mesh>
-    <LeafShadow />
   </group>
 );
 
