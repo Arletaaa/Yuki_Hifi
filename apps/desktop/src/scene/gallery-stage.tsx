@@ -1,6 +1,7 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Color, Group, MathUtils, Mesh, PMREMGenerator, RepeatWrapping, SRGBColorSpace, TextureLoader } from "three";
+import { Box3, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
@@ -57,6 +58,64 @@ interface DiscProps {
   readonly spinning?: boolean;
 }
 
+/** 封面（内页）。 */
+const COVER_NODE = "Object_11";
+/** 托盘上那层印着 CD 图形的纸，会挡住封面。 */
+const CD_PRINT_NODES = new Set(["Object_8"]);
+/** 盘片本体：陈列时隐藏，点击后再出现。 */
+const DISC_NODES = new Set(["Object_13", "Object_14"]);
+
+/** 透明宝石盒（Sketchfab "CD Jewel Case"，作者 蓝人组合，CC-BY 4.0）。 */
+const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | null; readonly tint: string }) => {
+  const { scene } = useLoader(GLTFLoader, "/models/cd-case.glb");
+
+  const prepared = useMemo(() => {
+    const clone = scene.clone(true);
+
+    clone.traverse((child) => {
+      const mesh = child as Mesh;
+
+      if (!mesh.isMesh) {
+        return;
+      }
+
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      if (CD_PRINT_NODES.has(mesh.name) || DISC_NODES.has(mesh.name)) {
+        mesh.visible = false;
+        return;
+      }
+
+      if (mesh.name === COVER_NODE) {
+        mesh.material = new MeshStandardMaterial({
+          color: coverTexture ? "#ffffff" : tint,
+          map: coverTexture,
+          metalness: 0.02,
+          roughness: 0.7
+        });
+      }
+    });
+
+    const box = new Box3().setFromObject(clone);
+    const size = new Vector3();
+    const center = new Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const fit = 0.52 / Math.max(size.y, 0.0001);
+
+    const wrapper = new Group();
+    clone.position.set(-center.x, -center.y, -center.z);
+    wrapper.rotation.y = -Math.PI / 2;
+    wrapper.scale.setScalar(fit);
+    wrapper.add(clone);
+
+    return wrapper;
+  }, [coverTexture, scene, tint]);
+
+  return <primitive object={prepared} />;
+};
+
 const Disc = ({
   coverPath,
   id,
@@ -110,16 +169,14 @@ const Disc = ({
         }}
         ref={groupRef}
       >
-        {/* 盒体：磨砂塑料侧壁 */}
-        <boxGeometry args={[0.52, 0.52, 0.075]} />
-        <meshStandardMaterial color="#151a24" metalness={0.15} roughness={0.55} />
-        {/* 内页：封面或色板占位 */}
-        <mesh position={[0, 0, 0.04]} scale={scale}>
-          <planeGeometry args={[0.46, 0.46]} />
+        <CaseModel coverTexture={texture} tint={tint} />
+        {/* 封面：贴在最前面，等价于"内页贴着前盖内侧"，确保可见 */}
+        <mesh position={[0, 0, 0.029]} scale={scale}>
+          <planeGeometry args={[0.44, 0.44]} />
           {texture ? (
-            <meshStandardMaterial map={texture} metalness={0.05} roughness={0.62} toneMapped={false} />
+            <meshStandardMaterial map={texture} metalness={0.02} roughness={0.7} toneMapped={false} />
           ) : (
-            <meshStandardMaterial color={tint} metalness={0.04} roughness={0.66} />
+            <meshStandardMaterial color={tint} metalness={0.02} roughness={0.72} />
           )}
         </mesh>
         {/* 书脊/侧边高光：收藏为金色 */}
