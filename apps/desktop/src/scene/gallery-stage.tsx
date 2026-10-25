@@ -1,10 +1,32 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Color, Group, MathUtils, Mesh } from "three";
+import { Color, Group, MathUtils, Mesh, PMREMGenerator } from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
 import { getSeedHue } from "../lib/seed";
 import { useCoverTexture } from "./cover-textures";
+
+/** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
+const ProceduralEnvironment = () => {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const generator = new PMREMGenerator(gl);
+    const environment = generator.fromScene(new RoomEnvironment(), 0.04);
+
+    scene.environment = environment.texture;
+    scene.environmentIntensity = 0.9;
+
+    return () => {
+      scene.environment = null;
+      environment.dispose();
+      generator.dispose();
+    };
+  }, [gl, scene]);
+
+  return null;
+};
 
 const GAP = 0.62;
 const DISC_RADIUS = 0.26;
@@ -498,7 +520,8 @@ export const GalleryExperience = ({
       >
         <color args={["#080b12"]} attach="background" />
         <fog args={["#080b12", 6, 16]} attach="fog" />
-        <ambientLight intensity={0.85} />
+        <ProceduralEnvironment />
+        <ambientLight intensity={0.6} />
         <directionalLight
           castShadow
           color="#fff0dc"
