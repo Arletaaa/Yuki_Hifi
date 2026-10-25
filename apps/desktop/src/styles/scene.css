@@ -240,3 +240,57 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* ---------- 编辑体版式层 ---------- */
+
+.gallery-meta {
+  position: absolute;
+  top: 26px;
+  left: 32px;
+  pointer-events: none;
+}
+
+.gallery-meta__title {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #f1ece4;
+}
+
+.gallery-meta__sub {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(241, 236, 228, 0.42);
+}
+
+.gallery-caption {
+  position: absolute;
+  bottom: 26px;
+  left: 32px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.gallery-caption__index {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgba(241, 236, 228, 0.5);
+}
+
+.gallery-caption__name {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+  font-size: 20px;
+  color: #f1ece4;
+}
+
+.gallery-caption__hint {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(241, 236, 228, 0.35);
+}

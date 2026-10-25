@@ -9,8 +9,13 @@ import { useCoverTexture } from "./cover-textures";
 const GAP = 0.62;
 const DISC_RADIUS = 0.26;
 const BASE_Y = 1.15;
-const CAMERA_POSITION: readonly [number, number, number] = [0, 2.5, 6.0];
-const LOOK_AT: readonly [number, number, number] = [0, 1.02, 0];
+const CAMERA_POSITION: readonly [number, number, number] = [0, 2.05, 3.55];
+const LOOK_AT: readonly [number, number, number] = [0, 1.04, 0];
+
+/** 编辑体色板：低饱和、成套，避免随机彩虹色。 */
+const PALETTE = ["#c96f5a", "#8fa7b8", "#31506b", "#8a9a52", "#c8a06a", "#8c6b86", "#9fb0b8", "#a8563f"];
+
+const tintOf = (id: string): string => PALETTE[getSeedHue(id) % PALETTE.length] ?? PALETTE[0] ?? "#c96f5a";
 const VISIBLE = 7;
 
 type Stage = "gallery" | "expanded" | "player";
@@ -46,6 +51,7 @@ const Disc = ({
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const groupRef = useRef<Mesh>(null);
+  const tint = tintOf(id);
 
   useFrame((state, delta) => {
     const group = groupRef.current;
@@ -55,11 +61,9 @@ const Disc = ({
     }
 
     const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
-    const liftTarget = hovered ? 0.06 : 0;
-    const tiltTarget = hovered ? 0.16 : 0;
 
-    group.position.z = MathUtils.lerp(group.position.z, liftTarget, damping);
-    group.rotation.y = MathUtils.lerp(group.rotation.y, tiltTarget, damping);
+    group.position.z = MathUtils.lerp(group.position.z, hovered ? 0.07 : 0, damping);
+    group.rotation.y = MathUtils.lerp(group.rotation.y, hovered ? 0.18 : 0, damping);
 
     if (spinning && meshRef.current) {
       meshRef.current.rotation.z = state.clock.elapsedTime * -0.35;
@@ -69,6 +73,7 @@ const Disc = ({
   return (
     <group position={[position[0], position[1], position[2]]} rotation={[0, rotationY, 0]}>
       <mesh
+        castShadow
         onClick={(event) => {
           event.stopPropagation();
           onSelect();
@@ -83,25 +88,30 @@ const Disc = ({
         }}
         ref={groupRef}
       >
-        <boxGeometry args={[DISC_RADIUS * 2.3, DISC_RADIUS * 2.3, 0.045]} />
-        <meshStandardMaterial
-          color={isFavorite ? "#4b3a20" : "#1b2029"}
-          emissive={isFavorite ? new Color("#c08a34") : new Color("#000000")}
-          emissiveIntensity={isFavorite ? 0.3 : 0}
-          metalness={0.4}
-          roughness={0.42}
-        />
-        <mesh position={[0, 0, 0.028]} ref={meshRef} scale={scale}>
-          <circleGeometry args={[DISC_RADIUS, 48]} />
+        {/* 盒体：磨砂塑料侧壁 */}
+        <boxGeometry args={[0.62, 0.62, 0.085]} />
+        <meshStandardMaterial color="#151a24" metalness={0.15} roughness={0.55} />
+        {/* 内页：封面或色板占位 */}
+        <mesh position={[0, 0, 0.045]} scale={scale}>
+          <planeGeometry args={[0.56, 0.56]} />
           {texture ? (
-            <meshStandardMaterial map={texture} metalness={0.3} roughness={0.32} toneMapped={false} />
+            <meshStandardMaterial map={texture} metalness={0.05} roughness={0.62} toneMapped={false} />
           ) : (
-            <meshStandardMaterial color={`hsl(${getSeedHue(id)}, 62%, 56%)`} metalness={0.35} roughness={0.3} />
+            <meshStandardMaterial color={tint} metalness={0.04} roughness={0.66} />
           )}
         </mesh>
+        {/* 书脊/侧边高光：收藏为金色 */}
+        <mesh position={[-0.315, 0, 0]}>
+          <boxGeometry args={[0.012, 0.62, 0.085]} />
+          <meshStandardMaterial
+            color={isFavorite ? "#c9a25a" : "#2a3140"}
+            metalness={isFavorite ? 0.9 : 0.3}
+            roughness={isFavorite ? 0.25 : 0.5}
+          />
+        </mesh>
         {isCurrent ? (
-          <mesh position={[0, -DISC_RADIUS * 1.28, 0.03]}>
-            <planeGeometry args={[0.34, 0.012]} />
+          <mesh position={[0, -0.36, 0.05]}>
+            <planeGeometry args={[0.3, 0.008]} />
             <meshBasicMaterial color="#ff7aa8" toneMapped={false} />
           </mesh>
         ) : null}
@@ -109,12 +119,11 @@ const Disc = ({
     </group>
   );
 };
-
 /* ---------- 展架 ---------- */
 
 const Shelf = () => (
   <group>
-    <mesh position={[0, BASE_Y - 0.3, 0.02]}>
+    <mesh position={[0, BASE_Y - 0.3, 0.02]} receiveShadow>
       <boxGeometry args={[40, 0.06, 0.5]} />
       <meshStandardMaterial color="#232834" metalness={0.45} roughness={0.5} />
     </mesh>
@@ -451,6 +460,8 @@ export const GalleryExperience = ({
   }, [currentTrackId, groups]);
 
   const progress = durationSeconds > 0 ? positionSeconds / durationSeconds : 0;
+  const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
+  const focusIndex = focusGroup ? groups.findIndex((group) => group.id === focusGroup.id) + 1 : 0;
 
   return (
     <>
@@ -465,10 +476,17 @@ export const GalleryExperience = ({
       >
         <color args={["#080b12"]} attach="background" />
         <fog args={["#080b12", 6, 16]} attach="fog" />
-        <ambientLight intensity={0.5} />
-        <directionalLight color="#ffe9f2" intensity={1.1} position={[1.5, 3.4, 2.6]} />
-        <pointLight color="#ff7aa8" decay={2} distance={6} intensity={6} position={[-1.6, 1.9, 1.4]} />
-        <pointLight color="#78d8ff" decay={2} distance={6} intensity={5} position={[1.8, 1.7, 1.2]} />
+        <ambientLight intensity={0.75} />
+        <directionalLight
+          castShadow
+          color="#fff2e6"
+          intensity={1.35}
+          position={[1.2, 4.2, 3.4]}
+          shadow-mapSize-height={1024}
+          shadow-mapSize-width={1024}
+        />
+        <pointLight color="#ffd9b8" decay={2} distance={5} intensity={3.2} position={[0, 1.05, 1.5]} />
+        <spotLight angle={0.9} color="#ffffff" intensity={2.2} penumbra={1} position={[0, 3.2, 1.2]} />
 
         {stage === "gallery" ? (
           <Carousel
@@ -507,8 +525,19 @@ export const GalleryExperience = ({
         ) : null}
       </Canvas>
 
-      {stage !== "player" ? (
-        <p className="gallery-hint">{hoverLabel ?? "拖动 · 滚轮 · 点击 CD"}</p>
+      <div className="gallery-meta">
+        <p className="gallery-meta__title">Arlt HiFi</p>
+        <p className="gallery-meta__sub">Local collection · {groups.length} albums</p>
+      </div>
+
+      {stage === "gallery" ? (
+        <div className="gallery-caption">
+          <span className="gallery-caption__index">
+            {String(Math.max(focusIndex, 0)).padStart(2, "0")} / {String(groups.length).padStart(2, "0")}
+          </span>
+          <span className="gallery-caption__name">{hoverLabel ?? focusGroup?.title ?? "Ready"}</span>
+          <span className="gallery-caption__hint">Drag · Wheel · Click</span>
+        </div>
       ) : null}
 
       {stage === "expanded" ? (

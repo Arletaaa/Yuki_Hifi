@@ -70,11 +70,6 @@ export const SceneStage = ({
         )}
       </div>
 
-      <div className="scene-stage__perf" aria-hidden="true">
-        <span>{sample.fps} fps</span>
-        <span>{sceneStats.calls} calls</span>
-      </div>
-
       <button aria-label="退出场景" className="scene-stage__close" onClick={onExit} type="button">
         ✕
       </button>
