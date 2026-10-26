@@ -73,9 +73,8 @@ export const buildCaseModel = (
   let lidPivot: Group | null = null;
 
   if (lid?.parent) {
-    const lidBox = new Box3().setFromObject(lid);
-    const lidCenter = lidBox.getCenter(new Vector3());
-    const hinge = new Vector3(lidCenter.x, lidCenter.y, lidBox.max.z);
+    // Blender 铰链点 (-0.000631, -1.1053, 0) 换算到 glTF 空间：(x, z, -y)。
+    const hinge = new Vector3(-0.000631, 0, 1.1053);
 
     lidPivot = new Group();
     lidPivot.position.copy(hinge);
@@ -126,10 +125,18 @@ export const buildCaseModel = (
     coverMesh.parent?.add(coverPlane);
   }
 
+  const cdGroup = clone.getObjectByName(CD_NODE) ?? null;
+  const hub = clone.getObjectByName("Object_14");
+
+  if (hub && cdGroup?.parent) {
+    // 固定盘片的塑料件属于盒体，不跟着盘片飞出去。
+    cdGroup.parent.attach(hub);
+  }
+
   return {
     root,
     lid,
     lidPivot,
-    cd: clone.getObjectByName(CD_NODE) ?? null
+    cd: cdGroup
   };
 };

@@ -9,13 +9,15 @@ import { useCoverTexture } from "./cover-textures";
 const LID_MAX = Math.PI;
 /** 松手后的停留位置（半开）。 */
 const LID_REST = Math.PI / 2;
+/** 绕 +Y 旋转时向外翻开的符号（Blender +90° 外翻 → 这里取反）。 */
+const LID_SIGN = -1;
 /** 盘片在盒面平面内的可移动范围（模型单位，Y 为高度、Z 为宽度）。 */
 const DISC_RANGE_Y = 0.35;
 // 模型 +Z 映射到屏幕左侧，所以"向右侧拖动"是负值。
-const DISC_RANGE_Z_MIN = -1.25;
-const DISC_RANGE_Z_MAX = -0.05;
+const DISC_RANGE_Z_MIN = -1.15;
+const DISC_RANGE_Z_MAX = 0.02;
 /** 盘片抓取时离开盒面的距离。 */
-const DISC_LIFT = 0.12;
+const DISC_LIFT = 0.05;
 
 export interface CaseDetailProps {
   readonly coverPath: string | null;
@@ -63,7 +65,7 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
     }
 
     if (params.get("disc") === "1") {
-      drag.current.discZ = -0.9;
+      drag.current.discZ = -0.75;
       drag.current.discY = 0.1;
       setDiscTaken(true);
     }
@@ -136,7 +138,7 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
     }
 
     if (built.lidPivot) {
-      built.lidPivot.rotation.y = MathUtils.lerp(built.lidPivot.rotation.y, drag.current.lid, damping);
+      built.lidPivot.rotation.y = MathUtils.lerp(built.lidPivot.rotation.y, drag.current.lid * LID_SIGN, damping);
     }
 
     if (built.cd) {
@@ -144,9 +146,7 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
       built.cd.position.y = MathUtils.lerp(built.cd.position.y, drag.current.discY, damping);
       built.cd.position.z = MathUtils.lerp(built.cd.position.z, drag.current.discZ, damping);
 
-      if (discTaken) {
-        built.cd.rotation.y += delta * 1.2;
-      }
+      // TODO: 自转需要围绕盘片自身的法线（Object_13 的局部 Y），不能转整个 CD_1 组。
     }
 
     invalidate();
