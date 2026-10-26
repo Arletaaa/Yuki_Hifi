@@ -36,6 +36,9 @@ export const SceneStage = ({
   tracks
 }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
+  const [showPerf] = useState<boolean>(
+    () => new URLSearchParams(window.location.search).get("perf") === "1"
+  );
   const sample = useFrameRateSample();
 
   return (
@@ -61,12 +64,18 @@ export const SceneStage = ({
           <div className="scene-stage__fallback">
             <h1 className="scene-stage__fallback-title">无法启用 3D 场景</h1>
             <p className="scene-stage__fallback-copy">当前环境不支持 WebGL2，已退回列表视图，功能不受影响。</p>
-
           </div>
         )}
       </div>
 
-
+      {showPerf ? (
+        <div className="scene-stage__perf" aria-hidden="true">
+          <span>{sample.fps} fps</span>
+          <span>{sample.rendersPerSecond} render/s</span>
+          <span>{sceneStats.calls} calls</span>
+          <span>{sceneStats.triangles} tri</span>
+        </div>
+      ) : null}
     </div>
   );
 };

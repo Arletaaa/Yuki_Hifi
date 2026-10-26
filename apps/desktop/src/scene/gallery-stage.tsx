@@ -9,6 +9,7 @@ import { getSeedHue } from "../lib/seed";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
+import { countRenderedFrame, sceneStats } from "./perf";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -146,8 +147,7 @@ const Disc = ({
 const WallSurface = () => {
   const textures = useLoader(TextureLoader, [
     "/textures/wall/fabric009-color.jpg",
-    "/textures/wall/fabric009-normal.jpg",
-    "/textures/wall/fabric009-roughness.jpg"
+    "/textures/wall/fabric009-normal.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -175,9 +175,7 @@ const WallSurface = () => {
       color="#9d9186"
       map={map ?? null}
       metalness={0.02}
-      normalMap={normalMap ?? null}
       roughness={0.92}
-      roughnessMap={roughnessMap ?? null}
     />
   );
 };
@@ -194,8 +192,7 @@ const BackWall = () => (
 const CabinetSurface = () => {
   const textures = useLoader(TextureLoader, [
     "/textures/base/wood002-color.jpg",
-    "/textures/base/wood002-normal.jpg",
-    "/textures/base/wood002-roughness.jpg"
+    "/textures/base/wood002-normal.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -224,9 +221,7 @@ const CabinetSurface = () => {
       color="#c2b09a"
       map={map ?? null}
       metalness={0.05}
-      normalMap={normalMap ?? null}
       roughness={0.7}
-      roughnessMap={roughnessMap ?? null}
     />
   );
 };
@@ -235,8 +230,7 @@ const CabinetSurface = () => {
 const DeskSurface = () => {
   const textures = useLoader(TextureLoader, [
     "/textures/table/wood029-color.jpg",
-    "/textures/table/wood029-normal.jpg",
-    "/textures/table/wood029-roughness.jpg"
+    "/textures/table/wood029-normal.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -261,15 +255,13 @@ const DeskSurface = () => {
   }, [map, textures]);
 
   return (
-    <mesh position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
+    <mesh position={[0, BASE_Y - 0.32, 0.05]}>
       <boxGeometry args={[40, 0.12, 0.62]} />
       <meshStandardMaterial
         map={map ?? null}
         metalness={0.04}
-        normalMap={normalMap ?? null}
-        roughness={0.72}
-        roughnessMap={roughnessMap ?? null}
-      />
+          roughness={0.72}
+        />
     </mesh>
   );
 };
@@ -297,6 +289,19 @@ const Shelf = () => (
 
 /* ---------- 横向单排 + 无限循环 ---------- */
 
+
+/** 把渲染器统计写进 sceneStats，并把已绘制帧数交给帧率采样器。 */
+const FrameProbe = () => {
+  const gl = useThree((state) => state.gl);
+
+  useFrame(() => {
+    sceneStats.calls = gl.info.render.calls;
+    sceneStats.triangles = gl.info.render.triangles;
+    countRenderedFrame();
+  });
+
+  return null;
+};
 const Carousel = ({
   groups,
   currentGroupId,
@@ -643,7 +648,7 @@ export const GalleryExperience = ({
         camera={{ fov: 30, position: [CAMERA_POSITION[0], CAMERA_POSITION[1], CAMERA_POSITION[2]] }}
         dpr={1}
         frameloop="demand"
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        gl={{ antialias: false, powerPreference: "high-performance" }}
         onCreated={({ camera }) => {
           camera.lookAt(LOOK_AT[0], LOOK_AT[1], LOOK_AT[2]);
         }}
@@ -653,12 +658,9 @@ export const GalleryExperience = ({
         <ProceduralEnvironment />
         <ambientLight intensity={0.6} />
         <directionalLight
-          castShadow
           color="#fff0dc"
           intensity={1.15}
           position={[3.6, 4.4, 2.4]}
-          shadow-mapSize-height={512}
-          shadow-mapSize-width={512}
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
@@ -761,19 +763,6 @@ export const GalleryExperience = ({
               type="button"
             >
               ‹
-            </button>
-            <button
-              className="gallery-open__pill"
-              onClick={() => {
-                if (focusGroup) {
-                  setExpandedGroup(focusGroup);
-                  setStage("expanded");
-                  setHoverLabel(null);
-                }
-              }}
-              type="button"
-            >
-              OPEN
             </button>
             <button
               aria-label="下一张"
