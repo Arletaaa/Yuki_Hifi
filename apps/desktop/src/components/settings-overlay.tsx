@@ -14,7 +14,6 @@ const TABLE_SWATCHES: readonly Swatch[] = [
   { id: "oak", base: "#b08d63" }
 ];
 
-/** 台底（台面下方柜体）材质。 */
 const BASE_SWATCHES: readonly Swatch[] = [
   { id: "wood-v", image: "/textures/wood008-color.jpg", base: "#4a3324" },
   { id: "wood-h", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
@@ -42,17 +41,18 @@ const LIGHT_SWATCHES: readonly Swatch[] = [
   { id: "spot", base: "#fff4e2" }
 ];
 
-interface SwatchRowProps {
+interface GroupProps {
   readonly items: readonly Swatch[];
-  readonly onChange: (id: string) => void;
   readonly label: string;
+  readonly onChange: (id: string) => void;
   readonly value: string;
 }
 
-const SwatchRow = ({ items, label, onChange, value }: SwatchRowProps) => (
-  <section className="preset-row">
-    <p className="preset-row__label">{label}</p>
-    <div className="preset-row__items">
+/** 一组材质球：超过 4 个时横向滚动。 */
+const SwatchGroup = ({ items, label, onChange, value }: GroupProps) => (
+  <div className="preset-group">
+    <p className="preset-group__label">{label}</p>
+    <div className="preset-group__strip">
       {items.map((item) => (
         <button
           className={`preset-ball${item.id === value ? " is-active" : ""}`}
@@ -60,7 +60,6 @@ const SwatchRow = ({ items, label, onChange, value }: SwatchRowProps) => (
           onClick={() => {
             onChange(item.id);
           }}
-          title={label}
           type="button"
         >
           <span
@@ -74,14 +73,14 @@ const SwatchRow = ({ items, label, onChange, value }: SwatchRowProps) => (
         </button>
       ))}
     </div>
-  </section>
+  </div>
 );
 
 export interface SettingsOverlayProps {
   readonly onClose: () => void;
 }
 
-/** 半透明设置浮层：场景预设 / 音量 / 关于。 */
+/** 全透明设置浮层：两列材质选择 + 音量 + 置底版权。 */
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
@@ -97,23 +96,35 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
         ✕
       </button>
 
-      <SwatchRow items={TABLE_SWATCHES} label="台面" onChange={setTable} value={table} />
-      <SwatchRow items={BASE_SWATCHES} label="台底" onChange={setBase} value={base} />
-      <SwatchRow items={WALL_SWATCHES} label="墙面" onChange={setWall} value={wall} />
-      <SwatchRow items={SILHOUETTE_SWATCHES} label="剪影" onChange={setSilhouette} value={silhouette} />
-      <SwatchRow items={LIGHT_SWATCHES} label="光效" onChange={setLight} value={light} />
+      <div className="preset-pair">
+        <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={setTable} value={table} />
+        <SwatchGroup items={BASE_SWATCHES} label="台底" onChange={setBase} value={base} />
+      </div>
 
-      <input
-        aria-label="音量"
-        className="overlay-volume"
-        max={100}
-        min={0}
-        onChange={(event) => {
-          setVolume(Number(event.currentTarget.value));
-        }}
-        type="range"
-        value={volume}
-      />
+      <div className="preset-pair">
+        <SwatchGroup items={WALL_SWATCHES} label="墙面" onChange={setWall} value={wall} />
+        <SwatchGroup items={SILHOUETTE_SWATCHES} label="剪影" onChange={setSilhouette} value={silhouette} />
+      </div>
+
+      <div className="preset-pair">
+        <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={setLight} value={light} />
+        <div />
+      </div>
+
+      <div className="overlay-volume__row">
+        <p className="overlay-volume__label">音量</p>
+        <input
+          aria-label="音量"
+          className="overlay-volume"
+          max={100}
+          min={0}
+          onChange={(event) => {
+            setVolume(Number(event.currentTarget.value));
+          }}
+          type="range"
+          value={volume}
+        />
+      </div>
 
       <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>
     </div>

@@ -471,25 +471,25 @@
 /* ---------- 设置浮层内容 ---------- */
 
 .settings-overlay__panel {
-  padding: 20px 26px;
+  padding: 18px 22px;
   border: 0;
   border-radius: 20px;
   background: transparent;
 }
 
 .settings-overlay__inner {
-  display: grid;
-  gap: 14px;
-  max-height: 84vh;
-  overflow: auto;
-  padding: 8px 4px;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 460px;
+  max-height: 82vh;
+  padding: 6px 4px;
 }
 
 .settings-overlay__close {
   position: absolute;
-  top: 18px;
-  right: 20px;
+  top: 16px;
+  right: 18px;
   width: 26px;
   height: 26px;
   border: 1px solid rgba(243, 238, 230, 0.22);
@@ -499,27 +499,46 @@
   cursor: pointer;
 }
 
-.preset-row {
+.preset-pair {
   display: grid;
-  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.preset-pair > .preset-group + .preset-group {
+  border-left: 1px solid rgba(243, 238, 230, 0.14);
+  padding-left: 22px;
+}
+
+.preset-group {
+  display: grid;
+  gap: 8px;
   justify-items: center;
 }
 
-.preset-row__label {
+.preset-group__label {
   font-size: 9px;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   color: rgba(243, 238, 230, 0.34);
 }
 
-.preset-row__items {
+.preset-group__strip {
   display: flex;
-  gap: 22px;
-  align-items: center;
+  gap: 16px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+
+.preset-group__strip::-webkit-scrollbar {
+  display: none;
 }
 
 .preset-ball {
-  position: relative;
+  flex: 0 0 auto;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -529,15 +548,15 @@
 
 .preset-ball__surface {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background-position: center;
   background-size: cover;
   box-shadow:
-    inset -10px -14px 22px rgba(0, 0, 0, 0.62),
-    inset 8px 10px 18px rgba(255, 255, 255, 0.18),
-    0 18px 26px rgba(0, 0, 0, 0.55),
+    inset -8px -11px 18px rgba(0, 0, 0, 0.6),
+    inset 6px 8px 14px rgba(255, 255, 255, 0.16),
+    0 14px 20px rgba(0, 0, 0, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.4);
   transition:
     transform 180ms ease,
@@ -545,20 +564,36 @@
 }
 
 .preset-ball:hover .preset-ball__surface {
-  transform: translateY(-4px) scale(1.04);
+  transform: translateY(-3px) scale(1.05);
 }
 
 .preset-ball.is-active .preset-ball__surface {
   outline: 2px solid #6fd08a;
-  outline-offset: 6px;
+  outline-offset: 5px;
+}
+
+.overlay-volume__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(243, 238, 230, 0.12);
+}
+
+.overlay-volume__label {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(243, 238, 230, 0.34);
 }
 
 .overlay-volume {
-  width: min(420px, 60vw);
+  flex: 1;
   height: 4px;
   appearance: none;
   border-radius: 999px;
-  background: linear-gradient(to right, rgba(111, 208, 138, 0), #6fd08a);
+  background: linear-gradient(to right, rgba(111, 208, 138, 0.08), #6fd08a);
 }
 
 .overlay-volume::-webkit-slider-thumb {
@@ -571,7 +606,9 @@
 }
 
 .settings-overlay__credit {
+  margin-top: auto;
+  padding-top: 14px;
   font-size: 9.5px;
   letter-spacing: 0.05em;
-  color: rgba(243, 238, 230, 0.28);
+  color: rgba(243, 238, 230, 0.26);
 }
