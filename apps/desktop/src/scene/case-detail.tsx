@@ -149,7 +149,15 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
       // TODO: 自转需要围绕盘片自身的法线（Object_13 的局部 Y），不能转整个 CD_1 组。
     }
 
-    invalidate();
+    // 只在还有动画没收敛时继续请求绘制（播放态自转除外）。
+    const settled =
+      !model ||
+      (Math.abs(model.rotation.y - pointer.current.x * 0.14) < 0.002 &&
+        Math.abs(model.scale.x - (discTaken ? 1.02 : 1)) < 0.002);
+
+    if (!settled) {
+      invalidate();
+    }
   });
 
   return (

@@ -311,7 +311,7 @@
   left: 50%;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: clamp(14px, 1.6vw, 26px);
   transform: translateX(-50%);
 }
 
@@ -471,6 +471,7 @@
 /* ---------- 设置浮层内容 ---------- */
 
 .settings-overlay__panel {
+  width: min(1180px, 94vw);
   padding: 18px 22px;
   border: 0;
   border-radius: 20px;
@@ -481,8 +482,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 460px;
-  max-height: 82vh;
+  min-height: min(560px, 86vh);
+  max-height: 92vh;
+  justify-content: space-between;
   padding: 6px 4px;
 }
 
@@ -528,7 +530,7 @@
   display: flex;
   gap: 16px;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: visible;
   padding: 18px 20px;
   margin: -10px -6px;
   scrollbar-width: none;
@@ -549,8 +551,8 @@
 
 .preset-ball__surface {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: clamp(52px, 4.4vw, 78px);
+  height: clamp(52px, 4.4vw, 78px);
   border-radius: 50%;
   background-position: center;
   background-size: cover;

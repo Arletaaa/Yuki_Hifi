@@ -641,7 +641,7 @@ export const GalleryExperience = ({
     <>
       <Canvas
         camera={{ fov: 30, position: [CAMERA_POSITION[0], CAMERA_POSITION[1], CAMERA_POSITION[2]] }}
-        dpr={[1, 1.25]}
+        dpr={1}
         frameloop="demand"
         gl={{ antialias: true, powerPreference: "high-performance" }}
         onCreated={({ camera }) => {
@@ -657,8 +657,8 @@ export const GalleryExperience = ({
           color="#fff0dc"
           intensity={1.15}
           position={[3.6, 4.4, 2.4]}
-          shadow-mapSize-height={1024}
-          shadow-mapSize-width={1024}
+          shadow-mapSize-height={512}
+          shadow-mapSize-width={512}
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
