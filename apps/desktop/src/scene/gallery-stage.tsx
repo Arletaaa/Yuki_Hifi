@@ -11,6 +11,7 @@ import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
+import { DappledLight, LightShafts } from "./light-effects";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -676,6 +677,8 @@ export const GalleryExperience = ({
         <fog args={["#080b12", 6, 16]} attach="fog" />
         <ProceduralEnvironment />
         <FrameProbe />
+        <LightShafts />
+        <DappledLight />
         <hemisphereLight args={["#cfe0ff", "#2a2118", 0.2]} />
         <ambientLight intensity={0.35} />
         <directionalLight
