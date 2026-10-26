@@ -346,8 +346,8 @@ const Carousel = ({
 
       const deltaX = event.clientX - pointer.lastX;
       pointer.lastX = event.clientX;
-      pointer.target -= deltaX * 0.006;
-      pointer.velocity = -deltaX * 0.006;
+      pointer.target += deltaX * 0.006;
+      pointer.velocity = deltaX * 0.006;
       invalidate();
     };
 
@@ -361,7 +361,7 @@ const Carousel = ({
 
     const handleWheel = (event: WheelEvent): void => {
       event.preventDefault();
-      pointer.target -= Math.sign(event.deltaY || event.deltaX) * GAP;
+      pointer.target += Math.sign(event.deltaY || event.deltaX) * GAP;
       invalidate();
     };
 
@@ -773,7 +773,7 @@ export const GalleryExperience = ({
               aria-label="上一张"
               className="gallery-open__arrow"
               onClick={() => {
-                scrollRef.current -= 1;
+                scrollRef.current += 1;
               }}
               type="button"
             >
@@ -783,7 +783,7 @@ export const GalleryExperience = ({
               aria-label="下一张"
               className="gallery-open__arrow"
               onClick={() => {
-                scrollRef.current += 1;
+                scrollRef.current -= 1;
               }}
               type="button"
             >
