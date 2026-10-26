@@ -184,35 +184,6 @@ const WallSurface = () => {
 };
 
 
-/** 墙上的叶影：预生成的透明 PNG，贴片缓慢摆动模拟光源移动。 */
-const LeafShadow = () => {
-  const preset = useSettingsStore((state) => state.scenePreset);
-  const texture = useLoader(TextureLoader, `/textures/leaf/${preset.silhouette}-shadow.png`);
-  const groupRef = useRef<Group>(null);
-
-  useEffect(() => {
-    texture.colorSpace = SRGBColorSpace;
-    texture.needsUpdate = true;
-  }, [texture]);
-
-  useFrame((frame) => {
-    const group = groupRef.current;
-
-    if (group) {
-      group.position.x = 1.9 + Math.sin(frame.clock.elapsedTime * 0.16) * 0.5;
-      group.rotation.z = Math.sin(frame.clock.elapsedTime * 0.11) * 0.03;
-    }
-  });
-
-  return (
-    <group position={[1.9, BASE_Y + 1.2, -0.29]} ref={groupRef}>
-      <mesh>
-        <planeGeometry args={[9.5, 4.8]} />
-        <meshBasicMaterial alphaTest={0.02} depthWrite={false} map={texture} opacity={0.85} toneMapped={false} transparent />
-      </mesh>
-    </group>
-  );
-};
 /** 只有一面墙（详情场景用）。 */
 const BackWall = () => (
   <mesh position={[0, BASE_Y + 0.55, -0.34]}>
@@ -319,7 +290,6 @@ const Shelf = () => (
       <boxGeometry args={[40, 3.4, 0.08]} />
       <WallSurface />
     </mesh>
-    <LeafShadow />
   </group>
 );
 
