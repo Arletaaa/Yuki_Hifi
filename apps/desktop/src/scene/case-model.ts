@@ -31,7 +31,8 @@ export const buildCaseModel = (
   coverTexture: Texture | null,
   tint: string,
   targetHeight = 0.52,
-  showDisc = false
+  showDisc = false,
+  withCoverPlane = true
 ): BuiltCase => {
   const clone = scene.clone(true);
 
@@ -51,11 +52,6 @@ export const buildCaseModel = (
       return;
     }
 
-    // Object_8 是托盘上印着 CD 图形的纸层，必须挡住，否则会盖在封面上。
-    if (mesh.name === "Object_8") {
-      mesh.visible = false;
-      return;
-    }
 
     if (mesh.name === COVER_NODE) {
       mesh.material = new MeshStandardMaterial({
@@ -106,10 +102,11 @@ export const buildCaseModel = (
   const coverNode = clone.getObjectByName(COVER_NODE);
   const coverMesh = coverNode && "geometry" in coverNode ? (coverNode as Mesh) : null;
 
-  if (coverMesh) {
+  if (coverMesh && withCoverPlane) {
     const coverBox = new Box3().setFromObject(coverMesh);
     const coverCenter = coverBox.getCenter(new Vector3());
     const coverSize = coverBox.getSize(new Vector3());
+    const wholeBox = new Box3().setFromObject(clone);
 
     const coverPlane = new Mesh(
       new PlaneGeometry(coverSize.x * 0.92, coverSize.y * 0.92),
@@ -120,7 +117,7 @@ export const buildCaseModel = (
         roughness: 0.7
       })
     );
-    coverPlane.position.set(coverCenter.x, coverCenter.y, coverBox.max.z + 0.004);
+    coverPlane.position.set(coverCenter.x, coverCenter.y, wholeBox.max.z + 0.006);
     root.add(coverPlane);
   }
   const cdGroup = clone.getObjectByName(CD_NODE) ?? null;

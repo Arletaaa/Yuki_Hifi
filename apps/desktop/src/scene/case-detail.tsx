@@ -37,7 +37,7 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
   const texture = useCoverTexture(coverPath);
   const { scene } = useLoader(GLTFLoader, CASE_MODEL_URL);
   const { gl, invalidate } = useThree();
-  const built = useMemo(() => buildCaseModel(scene, texture, tint, 1.15, true), [scene, texture, tint]);
+  const built = useMemo(() => buildCaseModel(scene, texture, tint, 1.15, true, false), [scene, texture, tint]);
 
   const modelRef = useRef<Group>(null);
   const [lidAngle, setLidAngle] = useState(0);
