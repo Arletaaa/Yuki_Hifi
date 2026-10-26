@@ -42,19 +42,9 @@
 - 目视确认：CD 左后方墙面出现软投影；台面前缘到柜体的过渡区有接触阴影；CD 底部不再"贴纸感"；详情场景（`?detail=1`）盒子在墙上有投影。
 - 软阴影靠 `PCFSoftShadowMap` + 2048 map 得到；`shadow.radius` 在 PCFSoft 下无效，想更软就降 `mapSize`。
 
-## 未解决 / 待决策
+## 未解决
 
-### 1. 墙面纹理"格子感"（需要拍板）
-
-`fabric009` 是白十字印花布料，`repeat (26, 2.2)` 下十字约 0.26m 一颗，屏幕上很抢眼；参考图是纯净墙面。可选方向：
-
-- **A. 纯色墙（推荐试）**：颜色仍用 `#5d2b2b` 一类暖色，只保留 `normalMap`/`roughnessMap`，去掉 color map → 无格纹、仍保留布料起伏。要动 `WallSurface` 的贴图加载分支。
-- **B. 换 `leather012`**：实测那张贴图是近纯米色（近乎无图案），最接近参考图的干净墙，但会把整个场景从暖红压成暖白。
-- **C. 新增 `plain` 预设**：动 `defaultScenePreset` + `WALL_SWATCHES` + `mergeSettings` 校验，设置面板墙面组会变成 5 个球。
-
-本轮没有擅自改默认值——这是观感取向问题。
-
-### 2. 技术债
+### 1. 技术债
 
 - `gallery-stage.tsx` 已 800+ 行，混了相机、货架、CD、详情、光效、设置入口，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
 - 设置面板「剪影」「光效」两组材质球**没有任何代码消费**（`scenePreset.silhouette` / `.light` 只写入 `settings.json`）；要么接回场景，要么删掉这两组（连同 4 套 leaf 贴图）。
@@ -63,7 +53,7 @@
 - `?merge=1` 的网格合并路径保留但默认关闭，未验证收益。
 - `apps/desktop/electron/settings-store.test.ts` 里 `scenePreset` 的过期断言本轮已补（上个阶段加字段时漏改）。
 
-### 3. 未开始的刀
+### 2. 未开始的刀
 
 | 刀 | 内容 |
 | --- | --- |
