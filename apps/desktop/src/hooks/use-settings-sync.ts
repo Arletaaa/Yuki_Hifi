@@ -5,6 +5,7 @@ import { useSettingsStore } from "../store/settings-store";
 import { useWallpaperStore } from "../store/wallpaper-store";
 
 const SAVE_DEBOUNCE_MS = 400;
+export const SETTINGS_STORAGE_KEY = "arlt-hifi-settings";
 
 /** 把当前偏好写回 settings.json（防抖，且加载完成前不写）。 */
 export const useSaveSettings = (musicDirectory: string | null): void => {
@@ -20,11 +21,11 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
   const lastSaved = useRef<string | null>(null);
 
   useEffect(() => {
-    const api = window.arltHifiDesktop;
-
-    if (!api || hydration !== "ready") {
+    if (hydration !== "ready") {
       return;
     }
+
+    const api = window.arltHifiDesktop;
 
     const settings: AppSettings = {
       backgroundImagePath: wallpaperPath,
@@ -45,7 +46,13 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
 
     const timer = window.setTimeout(() => {
       lastSaved.current = serialized;
-      void api.saveSettings(settings);
+
+      // 网页预览没有主进程：退回 localStorage，刷新后仍保留设置。
+      if (api) {
+        void api.saveSettings(settings);
+      } else {
+        window.localStorage.setItem(SETTINGS_STORAGE_KEY, serialized);
+      }
     }, SAVE_DEBOUNCE_MS);
 
     return () => {

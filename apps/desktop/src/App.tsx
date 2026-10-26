@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { AppSettings } from "@arlhifi/shared";
 import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
 import { getDemoDirectoryPath } from "./dev/demo-params";
@@ -74,6 +75,20 @@ export const App = () => {
     const api = window.arltHifiDesktop;
 
     if (!api) {
+      // 网页预览：从 localStorage 恢复上次的设置（含场景预设）。
+      const stored = window.localStorage.getItem("arlt-hifi-settings");
+
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as AppSettings;
+          hydrateSettings(parsed);
+          hydrateWallpaper(parsed);
+          usePlayerStore.setState({ volume: parsed.volume, favorites: parsed.favorites });
+        } catch {
+          // 解析失败就保持默认值。
+        }
+      }
+
       return;
     }
 
