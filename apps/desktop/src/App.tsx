@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SettingsPage } from "./components/settings-page";
+import { SettingsOverlay } from "./components/settings-overlay";
 import { getDemoDirectoryPath } from "./dev/demo-params";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useSaveSettings } from "./hooks/use-settings-sync";
@@ -28,11 +28,10 @@ export const App = () => {
   useAudioPlayback();
   useApplyPreferences();
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(() => new URLSearchParams(window.location.search).get("settings") === "1");
   const [searchQuery, setSearchQuery] = useState("");
   const [directoryPath, setDirectoryPath] = useState<string | null>(() => getDemoDirectoryPath());
   const [scanErrorMessage, setScanErrorMessage] = useState<string | null>(null);
-  const [wallpaperErrorMessage, setWallpaperErrorMessage] = useState<string | null>(null);
 
   const library = usePlayerStore((state) => state.library);
   const favorites = usePlayerStore((state) => state.favorites);
@@ -45,7 +44,6 @@ export const App = () => {
   const togglePlayback = usePlayerStore((state) => state.togglePlayback);
   const playNext = usePlayerStore((state) => state.playNext);
   const playPrevious = usePlayerStore((state) => state.playPrevious);
-  const setWallpaperPath = useWallpaperStore((state) => state.setPath);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
 
@@ -137,27 +135,6 @@ export const App = () => {
     };
   }, []);
 
-  const handleSelectWallpaper = async (): Promise<void> => {
-    const api = window.arltHifiDesktop;
-
-    if (!api) {
-      setWallpaperErrorMessage("当前环境无法选择本地图片，请在 Electron 桌面应用中使用。");
-      return;
-    }
-
-    try {
-      const result = await api.selectBackgroundImage();
-
-      if (result.canceled || !result.filePath) {
-        return;
-      }
-
-      setWallpaperPath(result.filePath);
-      setWallpaperErrorMessage(null);
-    } catch (error) {
-      setWallpaperErrorMessage(getErrorMessage(error, "选择背景图片失败。"));
-    }
-  };
 
   return (
     <div className="app app--gallery">
@@ -215,12 +192,7 @@ export const App = () => {
             }}
             role="dialog"
           >
-            <SettingsPage
-              onSelectWallpaper={() => {
-                void handleSelectWallpaper();
-              }}
-              wallpaperErrorMessage={wallpaperErrorMessage}
-            />
+            <SettingsOverlay onClose={() => { setSettingsOpen(false); }} />
           </div>
         </div>
       ) : null}
