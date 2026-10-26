@@ -656,6 +656,7 @@ export const GalleryExperience = ({
         <color args={["#080b12"]} attach="background" />
         <fog args={["#080b12", 6, 16]} attach="fog" />
         <ProceduralEnvironment />
+        <FrameProbe />
         <ambientLight intensity={0.6} />
         <directionalLight
           color="#fff0dc"
