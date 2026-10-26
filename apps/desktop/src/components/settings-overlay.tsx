@@ -106,9 +106,8 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
         <SwatchGroup items={SILHOUETTE_SWATCHES} label="剪影" onChange={setSilhouette} value={silhouette} />
       </div>
 
-      <div className="preset-pair">
+      <div className="preset-pair preset-pair--center">
         <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={setLight} value={light} />
-        <div />
       </div>
 
       <div className="overlay-volume__row">

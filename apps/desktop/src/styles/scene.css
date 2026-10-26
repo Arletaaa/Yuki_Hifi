@@ -529,7 +529,8 @@
   gap: 16px;
   max-width: 100%;
   overflow-x: auto;
-  padding: 4px 2px;
+  padding: 18px 20px;
+  margin: -10px -6px;
   scrollbar-width: none;
 }
 
@@ -554,10 +555,9 @@
   background-position: center;
   background-size: cover;
   box-shadow:
-    inset -8px -11px 18px rgba(0, 0, 0, 0.6),
-    inset 6px 8px 14px rgba(255, 255, 255, 0.16),
-    0 14px 20px rgba(0, 0, 0, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.4);
+    inset -8px -10px 16px rgba(0, 0, 0, 0.55),
+    inset 6px 7px 12px rgba(255, 255, 255, 0.14),
+    0 8px 14px rgba(0, 0, 0, 0.35);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
@@ -611,4 +611,8 @@
   font-size: 9.5px;
   letter-spacing: 0.05em;
   color: rgba(243, 238, 230, 0.26);
+}
+.preset-pair--center {
+  grid-template-columns: 1fr;
+  justify-items: center;
 }

@@ -34,7 +34,7 @@ const ProceduralEnvironment = () => {
 const GAP = 0.80;
 const DISC_RADIUS = 0.26;
 const BASE_Y = 1.30;
-const CAMERA_POSITION: readonly [number, number, number] = [0, 1.72, 3.50];
+const CAMERA_POSITION: readonly [number, number, number] = [0, 1.78, 3.95];
 const LOOK_AT: readonly [number, number, number] = [0, 1.30, 0];
 
 /** 编辑体色板：低饱和、成套，避免随机彩虹色。 */
@@ -157,9 +157,11 @@ const WallSurface = () => {
         continue;
       }
 
+      texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
       texture.repeat.set(26, 2.2);
+      texture.anisotropy = 8;
       texture.needsUpdate = true;
     }
 
@@ -203,9 +205,11 @@ const CabinetSurface = () => {
         continue;
       }
 
+      texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
       texture.repeat.set(4, 0.12);
+      texture.anisotropy = 8;
       texture.needsUpdate = true;
     }
 
@@ -241,9 +245,11 @@ const DeskSurface = () => {
         continue;
       }
 
+      texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(18, 0.3);
+      texture.repeat.set(26, 0.42);
+      texture.anisotropy = 8;
       texture.needsUpdate = true;
     }
 
