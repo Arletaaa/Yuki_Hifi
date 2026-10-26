@@ -46,8 +46,8 @@ export const buildCaseModel = (
     }
 
     // 阴影只由台面接收；盒子自身不投影，避免每帧多一遍 126 个 mesh 的深度 pass。
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
 
     if (DISC_NODES.has(mesh.name)) {

@@ -11,6 +11,7 @@ import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
+import { createLeafShadowAlpha } from "./canvas-textures";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -184,6 +185,55 @@ const WallSurface = () => {
 };
 
 
+/** 墙上的叶影：由叶子照片生成的阴影遮罩，贴片缓慢摆动模拟光源移动。 */
+const LeafShadow = () => {
+  const preset = useSettingsStore((state) => state.scenePreset);
+  const [alpha, setAlpha] = useState<Texture | null>(null);
+  const groupRef = useRef<Group>(null);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void createLeafShadowAlpha(`/textures/leaf/${preset.silhouette}-color.jpg`)
+      .then((texture) => {
+        if (!cancelled) {
+          setAlpha(texture);
+          invalidate();
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [invalidate, preset.silhouette]);
+
+  useFrame((frame) => {
+    const group = groupRef.current;
+
+    if (group) {
+      group.position.x = 1.9 + Math.sin(frame.clock.elapsedTime * 0.16) * 0.5;
+      group.rotation.z = Math.sin(frame.clock.elapsedTime * 0.11) * 0.03;
+    }
+  });
+
+  return (
+    <group position={[1.9, BASE_Y + 1.2, -0.25]} ref={groupRef}>
+      <mesh>
+        <planeGeometry args={[9.5, 4.8]} />
+        <meshBasicMaterial
+          alphaMap={alpha}
+          color="#07070a"
+          depthWrite={false}
+          opacity={0.62}
+          toneMapped={false}
+          transparent
+        />
+      </mesh>
+    </group>
+  );
+};
 /** 只有一面墙（详情场景用）。 */
 const BackWall = () => (
   <mesh position={[0, BASE_Y + 0.55, -0.34]}>
@@ -261,7 +311,7 @@ const DeskSurface = () => {
   }, [map, textures]);
 
   return (
-    <mesh position={[0, BASE_Y - 0.32, 0.05]}>
+    <mesh position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
       <boxGeometry args={[40, 0.12, 0.62]} />
       <meshStandardMaterial
         map={map ?? null}
@@ -281,7 +331,7 @@ const Shelf = () => (
       <meshStandardMaterial color="#c89a68" metalness={0.2} roughness={0.4} emissive="#3a2413" emissiveIntensity={0.4} />
     </mesh>
     {/* 台面下方深色立面 */}
-    <mesh position={[0, BASE_Y - 0.95, 0.2]}>
+    <mesh position={[0, BASE_Y - 0.95, 0.2]} receiveShadow>
       <boxGeometry args={[40, 1.2, 0.08]} />
       <CabinetSurface />
     </mesh>
@@ -290,6 +340,7 @@ const Shelf = () => (
       <boxGeometry args={[40, 3.4, 0.08]} />
       <WallSurface />
     </mesh>
+    <LeafShadow />
   </group>
 );
 
@@ -676,11 +727,23 @@ export const GalleryExperience = ({
         <fog args={["#080b12", 6, 16]} attach="fog" />
         <ProceduralEnvironment />
         <FrameProbe />
-        <ambientLight intensity={0.6} />
+        <hemisphereLight args={["#cfe0ff", "#2a2118", 0.45]} />
+        <ambientLight intensity={0.85} />
         <directionalLight
+          castShadow
           color="#fff0dc"
-          intensity={1.15}
+          intensity={1.25}
           position={[3.6, 4.4, 2.4]}
+          shadow-bias={-0.0004}
+          shadow-camera-bottom={-1.6}
+          shadow-camera-far={14}
+          shadow-camera-left={-6}
+          shadow-camera-near={1}
+          shadow-camera-right={6}
+          shadow-camera-top={4}
+          shadow-mapSize-height={1024}
+          shadow-mapSize-width={1024}
+          shadow-normalBias={0.02}
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
