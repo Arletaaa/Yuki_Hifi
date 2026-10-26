@@ -11,7 +11,6 @@ import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
-import { createLeafShadowAlpha, createRadialGlow, createVerticalFade } from "./canvas-textures";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -185,75 +184,6 @@ const WallSurface = () => {
 };
 
 
-/** 墙面剪影：从叶子照片里提取"只有影子"的 alpha，并做轻微摆动。 */
-const Silhouette = () => {
-  const preset = useSettingsStore((state) => state.scenePreset);
-  const [alpha, setAlpha] = useState<Texture | null>(null);
-  const groupRef = useRef<Group>(null);
-  const invalidate = useThree((state) => state.invalidate);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void createLeafShadowAlpha(`/textures/leaf/${preset.silhouette}-color.jpg`)
-      .then((texture) => {
-        if (!cancelled) {
-          setAlpha(texture);
-          invalidate();
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [invalidate, preset.silhouette]);
-
-  useFrame((frame) => {
-    const group = groupRef.current;
-
-    if (group) {
-      // 光源轻微晃动的近似：整体缓慢横移 + 微旋转。
-      group.position.x = 2.2 + Math.sin(frame.clock.elapsedTime * 0.22) * 0.32;
-      group.rotation.z = Math.sin(frame.clock.elapsedTime * 0.16) * 0.02;
-    }
-  });
-
-  return (
-    <group position={[2.2, BASE_Y + 1.15, -0.26]} ref={groupRef}>
-      <mesh>
-        <planeGeometry args={[9, 4.4]} />
-        <meshBasicMaterial alphaMap={alpha} color="#0b0a08" depthWrite={false} opacity={0.55} toneMapped={false} transparent />
-      </mesh>
-    </group>
-  );
-};
-
-/** 台面与柜体之间的接触阴影、以及台面上的柔光，避免大面积纯色。 */
-const ShelfLighting = () => {
-  const contact = useMemo(() => createVerticalFade(0.55, 0), []);
-  const glow = useMemo(() => createRadialGlow(), []);
-
-  return (
-    <group>
-      {/* 台面正下方：向下的渐变阴影，制造厚度与落影 */}
-      <mesh position={[0, BASE_Y - 0.34, 0.36]}>
-        <planeGeometry args={[40, 0.55]} />
-        <meshBasicMaterial alphaMap={contact} color="#000000" depthWrite={false} opacity={0.75} toneMapped={false} transparent />
-      </mesh>
-      {/* 台面上的一束柔光 */}
-      <mesh position={[0.6, BASE_Y - 0.31, 0.06]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[13, 2.6]} />
-        <meshBasicMaterial blending={MultiplyBlending} depthWrite={false} map={glow} opacity={0.5} toneMapped={false} transparent />
-      </mesh>
-      {/* 柜体中段的柔和过渡 */}
-      <mesh position={[0, BASE_Y - 1.05, 0.26]}>
-        <planeGeometry args={[40, 1.1]} />
-        <meshBasicMaterial alphaMap={contact} color="#000000" depthWrite={false} opacity={0.35} toneMapped={false} transparent />
-      </mesh>
-    </group>
-  );
-};
 /** 只有一面墙（详情场景用）。 */
 const BackWall = () => (
   <mesh position={[0, BASE_Y + 0.55, -0.34]}>
@@ -346,7 +276,6 @@ const Shelf = () => (
   <group>
     {/* 台面：真实木纹 */}
     <DeskSurface />
-    <ShelfLighting />
     <mesh position={[0, BASE_Y - 0.26, 0.36]}>
       <boxGeometry args={[40, 0.02, 0.02]} />
       <meshStandardMaterial color="#c89a68" metalness={0.2} roughness={0.4} emissive="#3a2413" emissiveIntensity={0.4} />
@@ -361,7 +290,6 @@ const Shelf = () => (
       <boxGeometry args={[40, 3.4, 0.08]} />
       <WallSurface />
     </mesh>
-    <Silhouette />
   </group>
 );
 
