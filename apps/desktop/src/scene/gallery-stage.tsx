@@ -208,7 +208,10 @@ const CabinetSurface = () => {
       texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(4, 0.12);
+      // 柜体 40 × 1.2：格子约 2m（U 20 次 / V 0.6 次），原图横向纹理转 90° 变竖纹
+      texture.center.set(0.5, 0.5);
+      texture.rotation = Math.PI / 2;
+      texture.repeat.set(20, 0.6);
       texture.anisotropy = 8;
       texture.needsUpdate = true;
     }
@@ -248,7 +251,10 @@ const DeskSurface = () => {
       texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(12, 0.55);
+      // 台面 40 × 0.62，格子 2m；原图是纵向纹理，转 90° 让木纹沿台面长边
+      texture.center.set(0.5, 0.5);
+      texture.rotation = Math.PI / 2;
+      texture.repeat.set(20, 0.31);
       texture.anisotropy = 8;
       texture.needsUpdate = true;
     }
