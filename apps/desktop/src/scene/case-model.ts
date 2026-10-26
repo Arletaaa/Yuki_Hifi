@@ -1,4 +1,5 @@
-import { Box3, DoubleSide, Group, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
+import { Box3, DoubleSide, Group, Material, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 export const CASE_MODEL_URL = "/models/cd-case.glb";
 
@@ -32,7 +33,8 @@ export const buildCaseModel = (
   tint: string,
   targetHeight = 0.52,
   showDisc = false,
-  withCoverPlane = true
+  withCoverPlane = true,
+  mergeShell = false
 ): BuiltCase => {
   const clone = scene.clone(true);
 
@@ -80,6 +82,43 @@ export const buildCaseModel = (
     clone.add(lidPivot);
     lidPivot.attach(lid);
     lidPivot.updateMatrixWorld(true);
+  }
+
+  // 合并静态壳体的网格：参考实现只创建 1 个 BoxGeometry，而我们每个盒子 9 个 mesh。
+  if (mergeShell) {
+    clone.updateMatrixWorld(true);
+
+    const shellGeometries: import("three").BufferGeometry[] = [];
+    const shellMaterials: Material[] = [];
+    const shellMeshes: Mesh[] = [];
+
+    clone.traverse((child) => {
+      const mesh = child as Mesh;
+
+      if (!mesh.isMesh || !mesh.visible) {
+        return;
+      }
+
+      const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+
+      if (!material || (material.name !== "Rough_Plastic" && material.name !== "Translucent" && material.name !== "White" && material.name !== "Material.008" && material.name !== "FileBase")) {
+        return;
+      }
+
+      shellGeometries.push(mesh.geometry.clone().applyMatrix4(mesh.matrixWorld));
+      shellMaterials.push(material);
+      shellMeshes.push(mesh);
+    });
+
+    const merged = shellGeometries.length > 1 ? mergeGeometries(shellGeometries, true) : null;
+
+    if (merged) {
+      for (const mesh of shellMeshes) {
+        mesh.parent?.remove(mesh);
+      }
+
+      clone.add(new Mesh(merged, shellMaterials));
+    }
   }
 
   const box = new Box3().setFromObject(clone);

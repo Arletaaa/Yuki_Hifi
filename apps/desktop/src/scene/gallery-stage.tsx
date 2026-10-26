@@ -71,7 +71,8 @@ const DISC_NODES = new Set(["Object_13", "Object_14"]);
 /** 透明宝石盒（Sketchfab "CD Jewel Case"，作者 蓝人组合，CC-BY 4.0）。 */
 const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | null; readonly tint: string }) => {
   const { scene } = useLoader(GLTFLoader, CASE_MODEL_URL);
-  const built = useMemo(() => buildCaseModel(scene, coverTexture, tint), [coverTexture, scene, tint]);
+  const mergeShell = useMemo(() => new URLSearchParams(window.location.search).get("merge") === "1", []);
+  const built = useMemo(() => buildCaseModel(scene, coverTexture, tint, 0.52, false, true, mergeShell), [coverTexture, mergeShell, scene, tint]);
 
   return <primitive object={built.root} />;
 };
@@ -648,7 +649,7 @@ export const GalleryExperience = ({
         camera={{ fov: 30, position: [CAMERA_POSITION[0], CAMERA_POSITION[1], CAMERA_POSITION[2]] }}
         dpr={1}
         frameloop="demand"
-        gl={{ antialias: false, powerPreference: "high-performance" }}
+        gl={{ antialias: false, powerPreference: "high-performance", toneMappingExposure: 0.95 }}
         onCreated={({ camera }) => {
           camera.lookAt(LOOK_AT[0], LOOK_AT[1], LOOK_AT[2]);
         }}

@@ -14,3 +14,4 @@ test-results/
 
 # Claude Code local overrides (personal preferences, not tracked)
 .claude/settings.local.json
+.refs/
