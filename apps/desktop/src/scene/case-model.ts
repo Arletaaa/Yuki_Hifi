@@ -5,7 +5,6 @@ export const CASE_MODEL_URL = "/models/cd-case.glb";
 /** 封面（内页）。 */
 const COVER_NODE = "Object_11";
 /** 托盘上印着 CD 图形的纸层，会挡住封面。 */
-const CD_PRINT_NODES = new Set(["Object_8"]);
 /** 盘片本体。 */
 const DISC_NODES = new Set(["Object_13", "Object_14"]);
 /** 可翻转的盒盖组。 */
@@ -46,10 +45,6 @@ export const buildCaseModel = (
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    if (CD_PRINT_NODES.has(mesh.name)) {
-      mesh.visible = false;
-      return;
-    }
 
     if (DISC_NODES.has(mesh.name)) {
       mesh.visible = showDisc;
