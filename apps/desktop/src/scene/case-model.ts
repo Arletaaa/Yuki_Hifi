@@ -51,6 +51,12 @@ export const buildCaseModel = (
       return;
     }
 
+    // Object_8 是托盘上印着 CD 图形的纸层，必须挡住，否则会盖在封面上。
+    if (mesh.name === "Object_8") {
+      mesh.visible = false;
+      return;
+    }
+
     if (mesh.name === COVER_NODE) {
       mesh.material = new MeshStandardMaterial({
         color: coverTexture ? "#ffffff" : tint,
@@ -96,30 +102,27 @@ export const buildCaseModel = (
   const root = new Group();
   root.add(wrapper);
 
-  // 封面贴在前盖内侧：挂到内页所在的节点上，开盖时会跟着盖子一起翻。
+  // 封面放在 root 上、用内页包围盒定位（在根空间里算出来的位置是稳定的）。
   const coverNode = clone.getObjectByName(COVER_NODE);
   const coverMesh = coverNode && "geometry" in coverNode ? (coverNode as Mesh) : null;
 
   if (coverMesh) {
-    coverMesh.geometry.computeBoundingBox();
-    const geometryBox = coverMesh.geometry.boundingBox;
-    const coverSize = geometryBox ? geometryBox.getSize(new Vector3()) : new Vector3(1, 0, 1);
+    const coverBox = new Box3().setFromObject(coverMesh);
+    const coverCenter = coverBox.getCenter(new Vector3());
+    const coverSize = coverBox.getSize(new Vector3());
 
     const coverPlane = new Mesh(
-      new PlaneGeometry(coverSize.x * 0.9, coverSize.z * 0.9),
+      new PlaneGeometry(coverSize.x * 0.92, coverSize.y * 0.92),
       new MeshStandardMaterial({
         color: coverTexture ? "#ffffff" : tint,
         map: coverTexture,
         metalness: 0.02,
-        roughness: 0.7,
-        side: DoubleSide
+        roughness: 0.7
       })
     );
-    coverPlane.rotation.x = -Math.PI / 2;
-    coverPlane.position.copy(coverMesh.position).add(new Vector3(0, 0.0015, 0));
-    coverMesh.parent?.add(coverPlane);
+    coverPlane.position.set(coverCenter.x, coverCenter.y, coverBox.max.z + 0.004);
+    root.add(coverPlane);
   }
-
   const cdGroup = clone.getObjectByName(CD_NODE) ?? null;
   const hub = clone.getObjectByName("Object_14");
 
