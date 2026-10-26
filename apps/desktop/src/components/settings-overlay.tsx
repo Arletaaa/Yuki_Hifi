@@ -8,17 +8,17 @@ interface Swatch {
 }
 
 const TABLE_SWATCHES: readonly Swatch[] = [
-  { id: "wood002", image: "/textures/table/wood002-color.jpg", base: "#6b4f34" },
-  { id: "wood007", image: "/textures/table/wood007-color.jpg", base: "#8a5a35" },
-  { id: "wood092", image: "/textures/table/wood092-color.jpg", base: "#5a4030" },
-  { id: "wood096", image: "/textures/table/wood096-color.jpg", base: "#3f2f26" }
+  { id: "wood029", image: "/textures/table/wood029-color.jpg", base: "#6b4f34" },
+  { id: "wood066", image: "/textures/table/wood066-color.jpg", base: "#8a5a35" },
+  { id: "wood069", image: "/textures/table/wood069-color.jpg", base: "#5a4030" },
+  { id: "wood095", image: "/textures/table/wood095-color.jpg", base: "#3f2f26" }
 ];
 
 const BASE_SWATCHES: readonly Swatch[] = [
-  { id: "wood029", image: "/textures/base/wood029-color.jpg", base: "#4a3324" },
-  { id: "wood066", image: "/textures/base/wood066-color.jpg", base: "#6b4f34" },
-  { id: "wood069", image: "/textures/base/wood069-color.jpg", base: "#2f3a2f" },
-  { id: "wood095", image: "/textures/base/wood095-color.jpg", base: "#2a2b30" }
+  { id: "wood002", image: "/textures/base/wood002-color.jpg", base: "#4a3324" },
+  { id: "wood007", image: "/textures/base/wood007-color.jpg", base: "#6b4f34" },
+  { id: "wood092", image: "/textures/base/wood092-color.jpg", base: "#2f3a2f" },
+  { id: "wood096", image: "/textures/base/wood096-color.jpg", base: "#2a2b30" }
 ];
 
 const WALL_SWATCHES: readonly Swatch[] = [
@@ -85,8 +85,8 @@ export interface SettingsOverlayProps {
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
-  const [table, setTable] = useState("wood002");
-  const [base, setBase] = useState("wood029");
+  const [table, setTable] = useState("wood029");
+  const [base, setBase] = useState("wood002");
   const [wall, setWall] = useState("fabric009");
   const [silhouette, setSilhouette] = useState("none");
   const [light, setLight] = useState("morning");

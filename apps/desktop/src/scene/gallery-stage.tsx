@@ -193,9 +193,9 @@ const BackWall = () => (
 /** 柜体立面（Wood008 竖纹，CC0）。 */
 const CabinetSurface = () => {
   const textures = useLoader(TextureLoader, [
-    "/textures/base/wood029-color.jpg",
-    "/textures/base/wood029-normal.jpg",
-    "/textures/base/wood029-roughness.jpg"
+    "/textures/base/wood002-color.jpg",
+    "/textures/base/wood002-normal.jpg",
+    "/textures/base/wood002-roughness.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -208,9 +208,7 @@ const CabinetSurface = () => {
       texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      // 柜体 40 × 1.2：格子约 2m（U 20 次 / V 0.6 次），原图横向纹理转 90° 变竖纹
-      texture.center.set(0.5, 0.5);
-      texture.rotation = Math.PI / 2;
+      // 柜体 40 × 1.2，格子 2m；竖纹材质直接映射为竖向
       texture.repeat.set(20, 0.6);
       texture.anisotropy = 8;
       texture.needsUpdate = true;
@@ -236,9 +234,9 @@ const CabinetSurface = () => {
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
 const DeskSurface = () => {
   const textures = useLoader(TextureLoader, [
-    "/textures/table/wood002-color.jpg",
-    "/textures/table/wood002-normal.jpg",
-    "/textures/table/wood002-roughness.jpg"
+    "/textures/table/wood029-color.jpg",
+    "/textures/table/wood029-normal.jpg",
+    "/textures/table/wood029-roughness.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -251,9 +249,7 @@ const DeskSurface = () => {
       texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      // 台面 40 × 0.62，格子 2m；原图是纵向纹理，转 90° 让木纹沿台面长边
-      texture.center.set(0.5, 0.5);
-      texture.rotation = Math.PI / 2;
+      // 台面 40 × 0.62，格子 2m；横向木纹沿台面长边
       texture.repeat.set(20, 0.31);
       texture.anisotropy = 8;
       texture.needsUpdate = true;
