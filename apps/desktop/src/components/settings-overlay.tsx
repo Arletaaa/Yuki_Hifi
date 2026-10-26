@@ -1,70 +1,76 @@
 import { useState } from "react";
 import { usePlayerStore } from "../store/player-store";
-import { useSettingsStore } from "../store/settings-store";
 
 interface Swatch {
   readonly base: string;
   readonly id: string;
   readonly image?: string;
-  readonly label: string;
 }
 
 const TABLE_SWATCHES: readonly Swatch[] = [
-  { id: "wood-h", label: "横向木纹", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
-  { id: "wood-v", label: "竖向木纹", image: "/textures/wood008-color.jpg", base: "#4a3324" },
-  { id: "walnut", label: "深胡桃", base: "#3b2a1d" },
-  { id: "oak", label: "浅橡木", base: "#b08d63" }
+  { id: "wood-h", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
+  { id: "wood-v", image: "/textures/wood008-color.jpg", base: "#4a3324" },
+  { id: "walnut", base: "#3b2a1d" },
+  { id: "oak", base: "#b08d63" }
+];
+
+/** 台底（台面下方柜体）材质。 */
+const BASE_SWATCHES: readonly Swatch[] = [
+  { id: "wood-v", image: "/textures/wood008-color.jpg", base: "#4a3324" },
+  { id: "wood-h", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
+  { id: "graphite", base: "#23262b" },
+  { id: "felt", base: "#1c1a19" }
 ];
 
 const WALL_SWATCHES: readonly Swatch[] = [
-  { id: "fabric009", label: "织物 009", image: "/textures/wall-color.jpg", base: "#5d2b2b" },
-  { id: "fabric028", label: "织物 028", base: "#8a8378" },
-  { id: "plain", label: "素色", base: "#6f6860" },
-  { id: "gradient", label: "渐变", base: "#2b2f3a" }
+  { id: "fabric009", image: "/textures/wall-color.jpg", base: "#5d2b2b" },
+  { id: "fabric028", base: "#8a8378" },
+  { id: "plain", base: "#6f6860" },
+  { id: "gradient", base: "#2b2f3a" }
 ];
 
 const SILHOUETTE_SWATCHES: readonly Swatch[] = [
-  { id: "none", label: "无", base: "transparent" },
-  { id: "leaf", label: "树叶", base: "#1b1f18" },
-  { id: "blind", label: "百叶窗", base: "#242830" },
-  { id: "dots", label: "圆孔光斑", base: "#2a2a2a" }
+  { id: "none", base: "transparent" },
+  { id: "leaf", base: "#1b1f18" },
+  { id: "blind", base: "#242830" },
+  { id: "dots", base: "#2a2a2a" }
 ];
 
 const LIGHT_SWATCHES: readonly Swatch[] = [
-  { id: "morning", label: "晨光斜射", base: "#f0d7b4" },
-  { id: "night", label: "夜色冷光", base: "#7fa6c9" },
-  { id: "spot", label: "顶灯聚光", base: "#fff4e2" }
+  { id: "morning", base: "#f0d7b4" },
+  { id: "night", base: "#7fa6c9" },
+  { id: "spot", base: "#fff4e2" }
 ];
 
 interface SwatchRowProps {
   readonly items: readonly Swatch[];
   readonly onChange: (id: string) => void;
-  readonly title: string;
+  readonly label: string;
   readonly value: string;
 }
 
-const SwatchRow = ({ items, onChange, title, value }: SwatchRowProps) => (
+const SwatchRow = ({ items, label, onChange, value }: SwatchRowProps) => (
   <section className="preset-row">
-    <p className="preset-row__title">{title}</p>
+    <p className="preset-row__label">{label}</p>
     <div className="preset-row__items">
       {items.map((item) => (
         <button
-          className={`preset-swatch${item.id === value ? " is-active" : ""}`}
+          className={`preset-ball${item.id === value ? " is-active" : ""}`}
           key={item.id}
           onClick={() => {
             onChange(item.id);
           }}
+          title={label}
           type="button"
         >
           <span
-            className="preset-swatch__ball"
+            className="preset-ball__surface"
             style={
               item.image
                 ? { backgroundImage: `url(${item.image})`, backgroundColor: item.base }
                 : { backgroundColor: item.base }
             }
           />
-          <span className="preset-swatch__label">{item.label}</span>
         </button>
       ))}
     </div>
@@ -80,44 +86,36 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
   const [table, setTable] = useState("wood-h");
+  const [base, setBase] = useState("wood-v");
   const [wall, setWall] = useState("fabric009");
   const [silhouette, setSilhouette] = useState("none");
   const [light, setLight] = useState("morning");
 
   return (
     <div className="settings-overlay__inner">
-      <header className="settings-overlay__header">
-        <p className="settings-overlay__title">场景预设</p>
-        <button aria-label="关闭设置" className="settings-overlay__close" onClick={onClose} type="button">
-          ✕
-        </button>
-      </header>
+      <button aria-label="关闭设置" className="settings-overlay__close" onClick={onClose} type="button">
+        ✕
+      </button>
 
-      <SwatchRow items={TABLE_SWATCHES} onChange={setTable} title="台面" value={table} />
-      <SwatchRow items={WALL_SWATCHES} onChange={setWall} title="墙面" value={wall} />
-      <SwatchRow items={SILHOUETTE_SWATCHES} onChange={setSilhouette} title="剪影" value={silhouette} />
-      <SwatchRow items={LIGHT_SWATCHES} onChange={setLight} title="光效" value={light} />
+      <SwatchRow items={TABLE_SWATCHES} label="台面" onChange={setTable} value={table} />
+      <SwatchRow items={BASE_SWATCHES} label="台底" onChange={setBase} value={base} />
+      <SwatchRow items={WALL_SWATCHES} label="墙面" onChange={setWall} value={wall} />
+      <SwatchRow items={SILHOUETTE_SWATCHES} label="剪影" onChange={setSilhouette} value={silhouette} />
+      <SwatchRow items={LIGHT_SWATCHES} label="光效" onChange={setLight} value={light} />
 
-      <section className="preset-row">
-        <p className="preset-row__title">音量</p>
-        <input
-          aria-label="音量"
-          className="overlay-volume"
-          max={100}
-          min={0}
-          onChange={(event) => {
-            setVolume(Number(event.currentTarget.value));
-          }}
-          type="range"
-          value={volume}
-        />
-      </section>
+      <input
+        aria-label="音量"
+        className="overlay-volume"
+        max={100}
+        min={0}
+        onChange={(event) => {
+          setVolume(Number(event.currentTarget.value));
+        }}
+        type="range"
+        value={volume}
+      />
 
-      <footer className="settings-overlay__about">
-        <p>Arlt HiFi Player · v0.1.0</p>
-        <p>CD Jewel Case by 蓝人组合 · CC-BY 4.0 · Sketchfab</p>
-        <p>Wood066 / Wood008 / Fabric009 来自 ambientCG · CC0</p>
-      </footer>
+      <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>
     </div>
   );
 };

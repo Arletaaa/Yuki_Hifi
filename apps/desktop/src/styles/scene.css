@@ -470,92 +470,95 @@
 }
 /* ---------- 设置浮层内容 ---------- */
 
+.settings-overlay__panel {
+  padding: 20px 26px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+}
+
 .settings-overlay__inner {
   display: grid;
-  gap: 18px;
-}
-
-.settings-overlay__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.settings-overlay__title {
-  font-family: Georgia, "Songti SC", serif;
-  font-size: 20px;
-  letter-spacing: 0.02em;
+  gap: 14px;
+  max-height: 84vh;
+  overflow: auto;
+  padding: 8px 4px;
+  justify-items: center;
 }
 
 .settings-overlay__close {
-  width: 28px;
-  height: 28px;
-  border: 1px solid rgba(243, 238, 230, 0.24);
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(243, 238, 230, 0.22);
   border-radius: 50%;
   background: transparent;
-  color: #f3eee6;
+  color: rgba(243, 238, 230, 0.7);
   cursor: pointer;
 }
 
-.preset-row__title {
-  margin-bottom: 8px;
-  font-size: 10px;
-  letter-spacing: 0.24em;
+.preset-row {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.preset-row__label {
+  font-size: 9px;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: rgba(243, 238, 230, 0.5);
+  color: rgba(243, 238, 230, 0.34);
 }
 
 .preset-row__items {
   display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
+  gap: 22px;
+  align-items: center;
 }
 
-.preset-swatch {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid transparent;
-  border-radius: 12px;
+.preset-ball {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: inherit;
   cursor: pointer;
 }
 
-.preset-swatch__ball {
-  width: 44px;
-  height: 44px;
+.preset-ball__surface {
+  display: block;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  background-size: cover;
   background-position: center;
+  background-size: cover;
   box-shadow:
-    inset -6px -8px 14px rgba(0, 0, 0, 0.55),
-    inset 5px 6px 12px rgba(255, 255, 255, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.4);
+    inset -10px -14px 22px rgba(0, 0, 0, 0.62),
+    inset 8px 10px 18px rgba(255, 255, 255, 0.18),
+    0 18px 26px rgba(0, 0, 0, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.preset-swatch__label {
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  color: rgba(243, 238, 230, 0.6);
+.preset-ball:hover .preset-ball__surface {
+  transform: translateY(-4px) scale(1.04);
 }
 
-.preset-swatch.is-active {
-  border-color: #6fd08a;
-}
-
-.preset-swatch.is-active .preset-swatch__ball {
+.preset-ball.is-active .preset-ball__surface {
   outline: 2px solid #6fd08a;
-  outline-offset: 3px;
+  outline-offset: 6px;
 }
 
 .overlay-volume {
-  width: 100%;
-  appearance: none;
+  width: min(420px, 60vw);
   height: 4px;
+  appearance: none;
   border-radius: 999px;
-  background: linear-gradient(to right, #6fd08a, rgba(243, 238, 230, 0.18));
+  background: linear-gradient(to right, rgba(111, 208, 138, 0), #6fd08a);
 }
 
 .overlay-volume::-webkit-slider-thumb {
@@ -564,14 +567,11 @@
   border-radius: 50%;
   appearance: none;
   background: #f3eee6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-.settings-overlay__about {
-  display: grid;
-  gap: 4px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(243, 238, 230, 0.12);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  color: rgba(243, 238, 230, 0.45);
+.settings-overlay__credit {
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: rgba(243, 238, 230, 0.28);
 }
