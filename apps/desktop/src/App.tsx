@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
 import { getDemoDirectoryPath } from "./dev/demo-params";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
@@ -177,7 +178,7 @@ export const App = () => {
         </button>
       {scanErrorMessage ? <p className="gallery-error">{scanErrorMessage}</p> : null}
 
-      {settingsOpen ? (
+      {settingsOpen ? createPortal((
         <div
           className="settings-overlay"
           onClick={() => {
@@ -195,7 +196,7 @@ export const App = () => {
             <SettingsOverlay onClose={() => { setSettingsOpen(false); }} />
           </div>
         </div>
-      ) : null}
+      ), document.body) : null}
     </div>
   );
 };

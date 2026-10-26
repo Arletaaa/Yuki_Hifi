@@ -439,9 +439,9 @@
 }
 
 .settings-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 9999;
   display: grid;
   place-items: center;
   background: rgba(6, 9, 14, 0.4);
@@ -450,7 +450,7 @@
 
 .settings-overlay__panel {
   width: min(760px, 84vw);
-  max-height: 78vh;
+  max-height: 86vh;
   overflow: auto;
   padding: 26px 30px;
   border: 1px solid rgba(243, 238, 230, 0.16);
