@@ -1,4 +1,4 @@
-﻿.scene-stage {
+.scene-stage {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -362,4 +362,20 @@
 .gallery-dashes__item.is-active {
   width: 48px;
   background: rgba(243, 238, 230, 0.9);
+}
+/* ---------- CD 详情场景 ---------- */
+
+.gallery-detail__back {
+  position: absolute;
+  top: 26px;
+  left: 34px;
+  z-index: 7;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(243, 238, 230, 0.28);
+  border-radius: 50%;
+  background: rgba(10, 13, 22, 0.5);
+  color: #f3eee6;
+  font-size: 14px;
+  cursor: pointer;
 }

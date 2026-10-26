@@ -6,6 +6,8 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
 import { getSeedHue } from "../lib/seed";
+import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
+import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
@@ -67,88 +69,11 @@ const DISC_NODES = new Set(["Object_13", "Object_14"]);
 
 /** 透明宝石盒（Sketchfab "CD Jewel Case"，作者 蓝人组合，CC-BY 4.0）。 */
 const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | null; readonly tint: string }) => {
-  const { scene } = useLoader(GLTFLoader, "/models/cd-case.glb");
-  const ref = useRef<Group>(null);
+  const { scene } = useLoader(GLTFLoader, CASE_MODEL_URL);
+  const built = useMemo(() => buildCaseModel(scene, coverTexture, tint), [coverTexture, scene, tint]);
 
-  const prepared = useMemo(() => {
-    const clone = scene.clone(true);
-
-    clone.traverse((child) => {
-      const mesh = child as Mesh;
-
-      if (!mesh.isMesh) {
-        return;
-      }
-
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      if (CD_PRINT_NODES.has(mesh.name) || DISC_NODES.has(mesh.name)) {
-        mesh.visible = false;
-        return;
-      }
-
-      if (mesh.name === COVER_NODE) {
-        mesh.material = new MeshStandardMaterial({
-          color: coverTexture ? "#ffffff" : tint,
-          map: coverTexture,
-          metalness: 0.02,
-          roughness: 0.7
-        });
-      }
-    });
-
-    const box = new Box3().setFromObject(clone);
-    const size = new Vector3();
-    const center = new Vector3();
-    box.getSize(size);
-    box.getCenter(center);
-    const fit = 0.52 / Math.max(size.y, 0.0001);
-
-    const wrapper = new Group();
-    clone.position.set(-center.x, -center.y, -center.z);
-    wrapper.rotation.y = -Math.PI / 2;
-    wrapper.scale.setScalar(fit);
-    wrapper.add(clone);
-    wrapper.updateMatrixWorld(true);
-
-    // 用内页的包围盒定位封面，保证与窗口严丝合缝（不再靠手调偏移）。
-    const coverMesh = clone.getObjectByName(COVER_NODE);
-    const coverBox = new Box3().setFromObject(coverMesh ?? clone);
-    const coverCenter = coverBox.getCenter(new Vector3());
-    const coverSize = coverBox.getSize(new Vector3());
-
-    const root = new Group();
-    root.add(wrapper);
-
-    const coverPlane = new Mesh(
-      new PlaneGeometry(coverSize.x * 0.9, coverSize.y * 0.9),
-      new MeshStandardMaterial({ color: tint, metalness: 0.02, roughness: 0.7 })
-    );
-    coverPlane.position.set(coverCenter.x, coverCenter.y, coverBox.max.z + 0.004);
-    root.add(coverPlane);
-
-    root.userData.coverPlane = coverPlane;
-
-    return root;
-  }, [coverTexture, scene, tint]);
-
-  useEffect(() => {
-    const plane = (ref.current as unknown as Group | null)?.userData.coverPlane as Mesh | undefined;
-
-    if (!plane) {
-      return;
-    }
-
-    const material = plane.material as MeshStandardMaterial;
-    material.map = coverTexture;
-    material.color.set(coverTexture ? "#ffffff" : tint);
-    material.needsUpdate = true;
-  }, [coverTexture, tint]);
-
-  return <primitive object={prepared} ref={ref} />;
+  return <primitive object={built.root} />;
 };
-
 const Disc = ({
   coverPath,
   id,
@@ -677,6 +602,7 @@ export const GalleryExperience = ({
   const [stage, setStage] = useState<Stage>("gallery");
   const [expandedGroup, setExpandedGroup] = useState<GalleryGroup | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
+  const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
   const scrollRef = useRef(0);
   const currentTrack = tracks.find((track) => track.id === currentTrackId) ?? null;
   const currentGroupId = useMemo(() => {
@@ -686,6 +612,12 @@ export const GalleryExperience = ({
   }, [currentTrackId, groups]);
 
   const progress = durationSeconds > 0 ? positionSeconds / durationSeconds : 0;
+
+  useEffect(() => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("detail") === "1" && groups.length > 1) {
+      setDetailGroup(groups[1] ?? null);
+    }
+  }, [groups]);
   const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
   const focusIndex = focusGroup ? groups.findIndex((group) => group.id === focusGroup.id) + 1 : 0;
 
@@ -714,7 +646,20 @@ export const GalleryExperience = ({
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
-        {stage === "gallery" ? (
+        {detailGroup ? (
+        <button
+          aria-label="返回展厅"
+          className="gallery-detail__back"
+          onClick={() => {
+            setDetailGroup(null);
+          }}
+          type="button"
+        >
+          ←
+        </button>
+      ) : null}
+
+      {!detailGroup && stage === "gallery" ? (
           <Carousel
             currentGroupId={currentGroupId}
             favoriteGroupIds={favoriteGroupIds}
@@ -722,14 +667,27 @@ export const GalleryExperience = ({
             onHover={setHoverLabel}
             scrollRef={scrollRef}
             onOpen={(group) => {
-              setExpandedGroup(group);
-              setStage("expanded");
+              setDetailGroup(group);
               setHoverLabel(null);
             }}
           />
         ) : null}
 
-        {stage === "expanded" && expandedGroup ? (
+        {detailGroup ? (
+          <CaseDetail
+            coverPath={detailGroup.coverPath}
+            onPlay={() => {
+              const firstTrack = tracks.find((track) => track.id === detailGroup.trackIds[0]);
+
+              if (firstTrack) {
+                onPlayTrack(firstTrack);
+              }
+            }}
+            tint={tintOf(detailGroup.id)}
+          />
+        ) : null}
+
+        {!detailGroup && stage === "expanded" && expandedGroup ? (
           <Fan
             group={expandedGroup}
             onSelect={(track) => {
