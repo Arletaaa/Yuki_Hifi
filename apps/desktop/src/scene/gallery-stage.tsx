@@ -180,6 +180,14 @@ const WallSurface = () => {
   );
 };
 
+/** 只有一面墙（详情场景用）。 */
+const BackWall = () => (
+  <mesh position={[0, BASE_Y + 0.55, -0.34]}>
+    <boxGeometry args={[40, 3.4, 0.08]} />
+    <WallSurface />
+  </mesh>
+);
+
 /** 柜体立面（Wood008 竖纹，CC0）。 */
 const CabinetSurface = () => {
   const textures = useLoader(TextureLoader, [
@@ -662,7 +670,7 @@ export const GalleryExperience = ({
         ) : null}
 
         {detailGroup ? (
-          <Shelf />
+          <BackWall />
         ) : null}
         {detailGroup ? (
           <CaseDetail

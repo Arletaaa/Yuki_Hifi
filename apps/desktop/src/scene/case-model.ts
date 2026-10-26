@@ -73,16 +73,15 @@ export const buildCaseModel = (
   let lidPivot: Group | null = null;
 
   if (lid?.parent) {
-    const parent = lid.parent;
     const lidBox = new Box3().setFromObject(lid);
     const lidCenter = lidBox.getCenter(new Vector3());
     const hinge = new Vector3(lidCenter.x, lidCenter.y, lidBox.max.z);
 
     lidPivot = new Group();
     lidPivot.position.copy(hinge);
-    parent.add(lidPivot);
-    lidPivot.add(lid);
-    lid.position.sub(hinge);
+    lidPivot.name = "lid-pivot";
+    clone.add(lidPivot);
+    lidPivot.attach(lid);
     lidPivot.updateMatrixWorld(true);
   }
 
