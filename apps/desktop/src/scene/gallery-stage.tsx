@@ -320,6 +320,7 @@ const Carousel = ({
 }) => {
   const { gl, invalidate } = useThree();
   const lastScroll = useRef(0);
+  const trackRef = useRef<Group>(null);
   const total = groups.length;
   const length = Math.max(total * GAP, GAP);
   const loopable = total > VISIBLE;
@@ -398,6 +399,31 @@ const Carousel = ({
 
     pointer.offset = MathUtils.lerp(pointer.offset, pointer.target, damping);
 
+    // 关键：位移在 useFrame 里直接写到 Object3D 上。
+    // 之前用 state 算位置、只在 React 重渲染时更新，导致拖动时画面一顿一顿。
+    const track = trackRef.current;
+
+    if (track) {
+      const half = length / 2;
+
+      for (let index = 0; index < track.children.length; index += 1) {
+        const child = track.children[index];
+
+        if (!child) {
+          continue;
+        }
+
+        let x = index * GAP + pointer.offset;
+
+        if (loopable) {
+          x = (((x + half) % length) + length) % length - half;
+        }
+
+        child.position.x = x;
+        child.visible = Math.abs(x) <= GAP * (VISIBLE + 1);
+      }
+    }
+
     if (Math.abs(pointer.offset - pointer.target) > 0.0005 || Math.abs(pointer.velocity) > 0.0005) {
       invalidate();
     }
@@ -406,20 +432,8 @@ const Carousel = ({
   return (
     <group>
       <Shelf />
-      {groups.slice(0, 400).map((group, index) => {
-        // 相对位移 + 取模：滑出右边界的那张从左侧回来，形成无缝循环。
-        let x = index * GAP + state.current.offset;
-
-        if (loopable) {
-          const half = length / 2;
-          x = (((x + half) % length) + length) % length - half;
-        }
-
-        if (Math.abs(x) > GAP * (VISIBLE + 1)) {
-          return null;
-        }
-
-        return (
+      <group ref={trackRef}>
+        {groups.slice(0, 400).map((group) => (
           <Disc
             coverPath={group.coverPath}
             id={group.id}
@@ -432,16 +446,15 @@ const Carousel = ({
             onSelect={() => {
               onOpen(group);
             }}
-            position={[x, BASE_Y, 0]}
+            position={[0, BASE_Y, 0]}
             rotationY={0}
             scale={1}
           />
-        );
-      })}
+        ))}
+      </group>
     </group>
   );
 };
-
 /* ---------- 扇开（组内曲目） ---------- */
 
 const Fan = ({
