@@ -669,6 +669,7 @@ export const GalleryExperience = ({
         dpr={[1, 2]}
         frameloop="always"
         gl={{ antialias: true, powerPreference: "high-performance", toneMappingExposure: 0.95 }}
+        shadows
         onCreated={({ camera }) => {
           camera.lookAt(LOOK_AT[0], LOOK_AT[1], LOOK_AT[2]);
         }}
@@ -684,7 +685,7 @@ export const GalleryExperience = ({
         <directionalLight
           castShadow
           color="#fff0dc"
-          intensity={2.1}
+          intensity={2.2}
           position={[3.6, 4.4, 2.4]}
           shadow-bias={-0.0004}
           shadow-camera-bottom={-1.6}

@@ -49,10 +49,10 @@ const createCausticTexture = (): Texture => {
     context.filter = "blur(9px)";
     context.globalCompositeOperation = "lighter";
 
-    for (let index = 0; index < 90; index += 1) {
+    for (let index = 0; index < 150; index += 1) {
       const x = Math.random() * size;
       const y = Math.random() * size;
-      const radius = 12 + Math.random() * 46;
+      const radius = 7 + Math.random() * 22;
       const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
       gradient.addColorStop(0, "rgba(255,236,200,0.5)");
       gradient.addColorStop(1, "rgba(255,236,200,0)");
@@ -92,29 +92,29 @@ export const LightShafts = () => {
     const time = frame.clock.elapsedTime;
     group.children.forEach((child, index) => {
       const phase = index * 1.7;
-      child.position.x = -3.2 + index * 2.6 + Math.sin(time * 0.18 + phase) * 0.5;
+      child.position.x = -3.6 + index * 1.9 + Math.sin(time * 0.18 + phase) * 0.45;
       const material = (child as unknown as { material?: { opacity: number } }).material;
 
       if (material) {
-        material.opacity = 0.1 + Math.abs(Math.sin(time * 0.25 + phase)) * 0.09;
+        material.opacity = 0.2 + Math.abs(Math.sin(time * 0.25 + phase)) * 0.14;
       }
     });
   });
 
   return (
     <group position={[0, BASE_Y + 0.1, 0.4]} ref={groupRef}>
-      {[0, 1, 2, 3].map((index) => (
+      {[0, 1, 2, 3, 4, 5].map((index) => (
         <mesh
           key={`shaft-${index}`}
-          position={[-3.2 + index * 2.6, 0, 0]}
+          position={[-3.6 + index * 1.9, 0, 0]}
           rotation={[0, 0, -0.22]}
         >
-          <planeGeometry args={[1.5, 4.6]} />
+          <planeGeometry args={[0.8, 4.6]} />
           <meshBasicMaterial
             blending={AdditiveBlending}
             depthWrite={false}
             map={texture}
-            opacity={0.12}
+            opacity={0.4}
             toneMapped={false}
             transparent
           />
@@ -146,7 +146,7 @@ export const DappledLight = () => {
           blending={AdditiveBlending}
           depthWrite={false}
           map={texture}
-          opacity={0.22}
+          opacity={0.4}
           toneMapped={false}
           transparent
         />
