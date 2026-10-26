@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultAppSettings } from "@arlhifi/shared";
+import { defaultAppSettings, defaultScenePreset } from "@arlhifi/shared";
 import { mergeSettings } from "./settings-store.js";
 
 describe("settings merging", () => {
@@ -25,6 +25,7 @@ describe("settings merging", () => {
       favorites: ["a", "b"],
       motionTier: "rich",
       musicDirectory: "D:\\Music",
+      scenePreset: defaultScenePreset,
       theme: "light",
       volume: 55,
       wallpaperBlur: 4,
