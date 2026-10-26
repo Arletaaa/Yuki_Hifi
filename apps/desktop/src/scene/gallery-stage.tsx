@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box3, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PlaneGeometry, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { Box3, Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MultiplyBlending, PlaneGeometry, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
@@ -10,6 +10,7 @@ import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
+import { useSettingsStore } from "../store/settings-store";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -146,9 +147,10 @@ const Disc = ({
 
 /** 墙面墙皮（Fabric028，CC0）。 */
 const WallSurface = () => {
+  const preset = useSettingsStore((state) => state.scenePreset);
   const textures = useLoader(TextureLoader, [
-    "/textures/wall/fabric009-color.jpg",
-    "/textures/wall/fabric009-normal.jpg"
+    `/textures/wall/${preset.wall}-color.jpg`,
+    `/textures/wall/${preset.wall}-normal.jpg`
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -181,6 +183,34 @@ const WallSurface = () => {
   );
 };
 
+
+/** 墙面剪影：把树叶贴图当成投影遮罩，用正片叠底压在墙上。 */
+const Silhouette = () => {
+  const preset = useSettingsStore((state) => state.scenePreset);
+  const texture = useLoader(TextureLoader, `/textures/leaf/${preset.silhouette}-color.jpg`);
+
+  useEffect(() => {
+    texture.colorSpace = SRGBColorSpace;
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1.6, 1);
+    texture.needsUpdate = true;
+  }, [texture]);
+
+  return (
+    <mesh position={[2.4, BASE_Y + 1.15, -0.26]}>
+      <planeGeometry args={[8.5, 4.2]} />
+      <meshBasicMaterial
+        blending={MultiplyBlending}
+        depthWrite={false}
+        map={texture}
+        opacity={0.55}
+        toneMapped={false}
+        transparent
+      />
+    </mesh>
+  );
+};
 /** 只有一面墙（详情场景用）。 */
 const BackWall = () => (
   <mesh position={[0, BASE_Y + 0.55, -0.34]}>
@@ -191,9 +221,10 @@ const BackWall = () => (
 
 /** 柜体立面（Wood008 竖纹，CC0）。 */
 const CabinetSurface = () => {
+  const preset = useSettingsStore((state) => state.scenePreset);
   const textures = useLoader(TextureLoader, [
-    "/textures/base/wood002-color.jpg",
-    "/textures/base/wood002-normal.jpg"
+    `/textures/base/${preset.base}-color.jpg`,
+    `/textures/base/${preset.base}-normal.jpg`
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -229,9 +260,10 @@ const CabinetSurface = () => {
 
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
 const DeskSurface = () => {
+  const preset = useSettingsStore((state) => state.scenePreset);
   const textures = useLoader(TextureLoader, [
-    "/textures/table/wood029-color.jpg",
-    "/textures/table/wood029-normal.jpg"
+    `/textures/table/${preset.table}-color.jpg`,
+    `/textures/table/${preset.table}-normal.jpg`
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -285,6 +317,7 @@ const Shelf = () => (
       <boxGeometry args={[40, 3.4, 0.08]} />
       <WallSurface />
     </mesh>
+    <Silhouette />
   </group>
 );
 

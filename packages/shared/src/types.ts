@@ -41,6 +41,23 @@ export interface PlayerSnapshot {
 }
 
 /** 持久化到 userData/settings.json 的全部偏好。 */
+/** 场景预设：材质与光效的组合（见 docs/decisions/006-library-and-scene-presets.md）。 */
+export interface ScenePreset {
+  readonly base: string;
+  readonly light: string;
+  readonly silhouette: string;
+  readonly table: string;
+  readonly wall: string;
+}
+
+export const defaultScenePreset: ScenePreset = {
+  table: "wood029",
+  base: "wood002",
+  wall: "fabric009",
+  silhouette: "leafset015",
+  light: "morning"
+};
+
 export interface AppSettings {
   readonly backgroundImagePath: string | null;
   readonly favorites: readonly string[];
@@ -50,6 +67,7 @@ export interface AppSettings {
   readonly volume: number;
   readonly wallpaperBlur: number;
   readonly wallpaperDim: number;
+  readonly scenePreset: ScenePreset;
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -60,7 +78,8 @@ export const defaultAppSettings: AppSettings = {
   theme: "dark",
   volume: 72,
   wallpaperBlur: 2,
-  wallpaperDim: 34
+  wallpaperDim: 34,
+  scenePreset: defaultScenePreset
 };
 
 export interface HifiSignalInfo {

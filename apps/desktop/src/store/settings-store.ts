@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { AppSettings, MotionTier, ThemeMode } from "@arlhifi/shared";
+import type { AppSettings, MotionTier, ScenePreset, ThemeMode } from "@arlhifi/shared";
+import { defaultScenePreset } from "@arlhifi/shared";
 
 interface SettingsStore {
   readonly hydration: "pending" | "ready";
@@ -7,6 +8,8 @@ interface SettingsStore {
   readonly motionTier: MotionTier;
   readonly setMotionTier: (motionTier: MotionTier) => void;
   readonly setTheme: (theme: ThemeMode) => void;
+  readonly scenePreset: ScenePreset;
+  readonly setScenePreset: (patch: Partial<ScenePreset>) => void;
   readonly theme: ThemeMode;
 }
 
@@ -19,7 +22,16 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
   motionTier: "standard",
   hydration: "pending",
   hydrate: (settings) => {
-    set({ theme: settings.theme, motionTier: settings.motionTier, hydration: "ready" });
+    set({
+      theme: settings.theme,
+      motionTier: settings.motionTier,
+      scenePreset: settings.scenePreset ?? defaultScenePreset,
+      hydration: "ready"
+    });
+  },
+  scenePreset: defaultScenePreset,
+  setScenePreset: (patch) => {
+    set((state) => ({ scenePreset: { ...state.scenePreset, ...patch } }));
   },
   setTheme: (theme) => {
     set({ theme });

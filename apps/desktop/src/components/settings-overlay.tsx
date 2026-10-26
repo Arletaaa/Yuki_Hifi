@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { usePlayerStore } from "../store/player-store";
+import { useSettingsStore } from "../store/settings-store";
 
 interface Swatch {
   readonly base: string;
@@ -29,7 +29,6 @@ const WALL_SWATCHES: readonly Swatch[] = [
 ];
 
 const SILHOUETTE_SWATCHES: readonly Swatch[] = [
-  { id: "none", base: "transparent" },
   { id: "leafset004", image: "/textures/leaf/leafset004-color.jpg", base: "#1b1f18" },
   { id: "leafset015", image: "/textures/leaf/leafset015-color.jpg", base: "#23281f" },
   { id: "leafset019", image: "/textures/leaf/leafset019-color.jpg", base: "#1a2220" },
@@ -85,11 +84,8 @@ export interface SettingsOverlayProps {
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
-  const [table, setTable] = useState("wood029");
-  const [base, setBase] = useState("wood002");
-  const [wall, setWall] = useState("fabric009");
-  const [silhouette, setSilhouette] = useState("none");
-  const [light, setLight] = useState("morning");
+  const scenePreset = useSettingsStore((state) => state.scenePreset);
+  const setScenePreset = useSettingsStore((state) => state.setScenePreset);
 
   return (
     <div className="settings-overlay__inner">
@@ -98,17 +94,17 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
       </button>
 
       <div className="preset-pair">
-        <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={setTable} value={table} />
-        <SwatchGroup items={BASE_SWATCHES} label="台底" onChange={setBase} value={base} />
+        <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />
+        <SwatchGroup items={BASE_SWATCHES} label="台底" onChange={(id) => { setScenePreset({ base: id }); }} value={scenePreset.base} />
       </div>
 
       <div className="preset-pair">
-        <SwatchGroup items={WALL_SWATCHES} label="墙面" onChange={setWall} value={wall} />
-        <SwatchGroup items={SILHOUETTE_SWATCHES} label="剪影" onChange={setSilhouette} value={silhouette} />
+        <SwatchGroup items={WALL_SWATCHES} label="墙面" onChange={(id) => { setScenePreset({ wall: id }); }} value={scenePreset.wall} />
+        <SwatchGroup items={SILHOUETTE_SWATCHES} label="剪影" onChange={(id) => { setScenePreset({ silhouette: id }); }} value={scenePreset.silhouette} />
       </div>
 
       <div className="preset-pair preset-pair--center">
-        <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={setLight} value={light} />
+        <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={(id) => { setScenePreset({ light: id }); }} value={scenePreset.light} />
       </div>
 
       <div className="overlay-volume__row">

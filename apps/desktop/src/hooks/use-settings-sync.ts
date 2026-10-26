@@ -10,6 +10,7 @@ const SAVE_DEBOUNCE_MS = 400;
 export const useSaveSettings = (musicDirectory: string | null): void => {
   const theme = useSettingsStore((state) => state.theme);
   const motionTier = useSettingsStore((state) => state.motionTier);
+  const scenePreset = useSettingsStore((state) => state.scenePreset);
   const hydration = useSettingsStore((state) => state.hydration);
   const volume = usePlayerStore((state) => state.volume);
   const favorites = usePlayerStore((state) => state.favorites);
@@ -29,6 +30,7 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
       backgroundImagePath: wallpaperPath,
       favorites,
       motionTier,
+      scenePreset,
       musicDirectory,
       theme,
       volume,
@@ -49,5 +51,5 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [favorites, hydration, motionTier, musicDirectory, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
+  }, [favorites, hydration, motionTier, musicDirectory, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
 };

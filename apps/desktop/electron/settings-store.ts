@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { defaultAppSettings, type AppSettings, type MotionTier, type ThemeMode } from "@arlhifi/shared";
+import { defaultAppSettings, defaultScenePreset, type AppSettings, type MotionTier, type ScenePreset, type ThemeMode } from "@arlhifi/shared";
 
 const settingsFileName = "settings.json";
 
@@ -18,6 +18,20 @@ const readStringArray = (value: unknown): readonly string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 /** 把磁盘上的任意 JSON 收敛为合法设置（纯函数，可单测）。 */
+const readPreset = (raw: unknown): ScenePreset => {
+  const record = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const pick = (value: unknown, fallback: string): string =>
+    typeof value === "string" && value.trim().length > 0 && value.length < 64 ? value : fallback;
+
+  return {
+    table: pick(record.table, defaultScenePreset.table),
+    base: pick(record.base, defaultScenePreset.base),
+    wall: pick(record.wall, defaultScenePreset.wall),
+    silhouette: pick(record.silhouette, defaultScenePreset.silhouette),
+    light: pick(record.light, defaultScenePreset.light)
+  };
+};
+
 export const mergeSettings = (raw: unknown): AppSettings => {
   if (typeof raw !== "object" || raw === null) {
     return { ...defaultAppSettings, favorites: [] };
@@ -37,7 +51,8 @@ export const mergeSettings = (raw: unknown): AppSettings => {
     theme: isThemeMode(record.theme) ? record.theme : defaultAppSettings.theme,
     volume: clampInt(record.volume, 0, 100, defaultAppSettings.volume),
     wallpaperBlur: clampInt(record.wallpaperBlur, 0, 12, defaultAppSettings.wallpaperBlur),
-    wallpaperDim: clampInt(record.wallpaperDim, 0, 60, defaultAppSettings.wallpaperDim)
+    wallpaperDim: clampInt(record.wallpaperDim, 0, 60, defaultAppSettings.wallpaperDim),
+    scenePreset: readPreset(record.scenePreset)
   };
 };
 
