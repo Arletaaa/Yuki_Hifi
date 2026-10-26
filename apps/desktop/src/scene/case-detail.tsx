@@ -67,7 +67,7 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
 
     if (built.cd) {
       // 模型空间 +X 是盒外方向；wrapper 已把它映射到 +Z（朝观众）。
-      built.cd.position.x = MathUtils.lerp(built.cd.position.x, discOut ? 0.26 : 0, damping);
+      built.cd.position.x = MathUtils.lerp(built.cd.position.x, discOut ? 0.12 : 0, damping);
 
       if (discOut) {
         built.cd.rotation.y += delta * 2.2;

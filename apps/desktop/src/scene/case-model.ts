@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
+import { Box3, DoubleSide, Group, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
 
 export const CASE_MODEL_URL = "/models/cd-case.glb";
 
@@ -66,6 +66,26 @@ export const buildCaseModel = (
     }
   });
 
+  // 铰链：在模型自身坐标系（尚未旋转/缩放）里取盒盖边缘，保证盖子像书本一样翻开。
+  clone.updateMatrixWorld(true);
+  const lidPrint = clone.getObjectByName(COVER_NODE) ?? null;
+  const lid = clone.getObjectByName(LID_NODE) ?? lidPrint?.parent ?? null;
+  let lidPivot: Group | null = null;
+
+  if (lid?.parent) {
+    const parent = lid.parent;
+    const lidBox = new Box3().setFromObject(lid);
+    const lidCenter = lidBox.getCenter(new Vector3());
+    const hinge = new Vector3(lidCenter.x, lidCenter.y, lidBox.max.z);
+
+    lidPivot = new Group();
+    lidPivot.position.copy(hinge);
+    parent.add(lidPivot);
+    lidPivot.add(lid);
+    lid.position.sub(hinge);
+    lidPivot.updateMatrixWorld(true);
+  }
+
   const box = new Box3().setFromObject(clone);
   const size = new Vector3();
   const center = new Vector3();
@@ -80,37 +100,31 @@ export const buildCaseModel = (
   wrapper.add(clone);
   wrapper.updateMatrixWorld(true);
 
-  const coverMesh = clone.getObjectByName(COVER_NODE);
-  const coverBox = new Box3().setFromObject(coverMesh ?? clone);
-  const coverCenter = coverBox.getCenter(new Vector3());
-  const coverSize = coverBox.getSize(new Vector3());
-
   const root = new Group();
   root.add(wrapper);
 
-  const coverPlane = new Mesh(
-    new PlaneGeometry(coverSize.x * 0.9, coverSize.y * 0.9),
-    new MeshStandardMaterial({ color: coverTexture ? "#ffffff" : tint, map: coverTexture, metalness: 0.02, roughness: 0.7 })
-  );
-  coverPlane.position.set(coverCenter.x, coverCenter.y, coverBox.max.z + 0.004);
-  root.add(coverPlane);
+  // 封面贴在前盖内侧：挂到内页所在的节点上，开盖时会跟着盖子一起翻。
+  const coverNode = clone.getObjectByName(COVER_NODE);
+  const coverMesh = coverNode && "geometry" in coverNode ? (coverNode as Mesh) : null;
 
-  // 用内页节点反查盒盖组（节点名在这种 Sketchfab 导出里不稳定）。
-  const lidPrint = clone.getObjectByName(COVER_NODE) ?? null;
-  const lid = clone.getObjectByName(LID_NODE) ?? lidPrint?.parent ?? null;
-  let lidPivot: Group | null = null;
+  if (coverMesh) {
+    coverMesh.geometry.computeBoundingBox();
+    const geometryBox = coverMesh.geometry.boundingBox;
+    const coverSize = geometryBox ? geometryBox.getSize(new Vector3()) : new Vector3(1, 0, 1);
 
-  if (lid?.parent) {
-    const parent = lid.parent;
-    const lidBox = new Box3().setFromObject(lid);
-    const lidCenter = lidBox.getCenter(new Vector3());
-    const hinge = new Vector3(lidCenter.x, lidCenter.y, lidBox.min.z);
-
-    lidPivot = new Group();
-    lidPivot.position.copy(hinge);
-    parent.add(lidPivot);
-    lidPivot.add(lid);
-    lid.position.sub(hinge);
+    const coverPlane = new Mesh(
+      new PlaneGeometry(coverSize.x * 0.9, coverSize.z * 0.9),
+      new MeshStandardMaterial({
+        color: coverTexture ? "#ffffff" : tint,
+        map: coverTexture,
+        metalness: 0.02,
+        roughness: 0.7,
+        side: DoubleSide
+      })
+    );
+    coverPlane.rotation.x = -Math.PI / 2;
+    coverPlane.position.copy(coverMesh.position).add(new Vector3(0, 0.0015, 0));
+    coverMesh.parent?.add(coverPlane);
   }
 
   return {

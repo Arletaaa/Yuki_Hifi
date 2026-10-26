@@ -646,19 +646,7 @@ export const GalleryExperience = ({
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
-        {detailGroup ? (
-        <button
-          aria-label="返回展厅"
-          className="gallery-detail__back"
-          onClick={() => {
-            setDetailGroup(null);
-          }}
-          type="button"
-        >
-          ←
-        </button>
-      ) : null}
-
+  
       {!detailGroup && stage === "gallery" ? (
           <Carousel
             currentGroupId={currentGroupId}
@@ -673,6 +661,9 @@ export const GalleryExperience = ({
           />
         ) : null}
 
+        {detailGroup ? (
+          <Shelf />
+        ) : null}
         {detailGroup ? (
           <CaseDetail
             coverPath={detailGroup.coverPath}
@@ -710,6 +701,18 @@ export const GalleryExperience = ({
         ) : null}
       </Canvas>
 
+      {detailGroup ? (
+        <button
+          aria-label="返回展厅"
+          className="gallery-detail__back"
+          onClick={() => {
+            setDetailGroup(null);
+          }}
+          type="button"
+        >
+          ←
+        </button>
+      ) : null}
       <div className="gallery-meta">
         <span className="gallery-meta__rule" />
         <div>
