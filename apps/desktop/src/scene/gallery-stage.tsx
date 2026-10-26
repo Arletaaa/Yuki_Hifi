@@ -145,9 +145,9 @@ const Disc = ({
 /** 墙面墙皮（Fabric028，CC0）。 */
 const WallSurface = () => {
   const textures = useLoader(TextureLoader, [
-    "/textures/wall-color.jpg",
-    "/textures/wall-normal.jpg",
-    "/textures/wall-roughness.jpg"
+    "/textures/wall/fabric009-color.jpg",
+    "/textures/wall/fabric009-normal.jpg",
+    "/textures/wall/fabric009-roughness.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -193,9 +193,9 @@ const BackWall = () => (
 /** 柜体立面（Wood008 竖纹，CC0）。 */
 const CabinetSurface = () => {
   const textures = useLoader(TextureLoader, [
-    "/textures/wood008-color.jpg",
-    "/textures/wood008-normal.jpg",
-    "/textures/wood008-roughness.jpg"
+    "/textures/base/wood029-color.jpg",
+    "/textures/base/wood029-normal.jpg",
+    "/textures/base/wood029-roughness.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -233,9 +233,9 @@ const CabinetSurface = () => {
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
 const DeskSurface = () => {
   const textures = useLoader(TextureLoader, [
-    "/textures/wood066-color.jpg",
-    "/textures/wood066-normal.jpg",
-    "/textures/wood066-roughness.jpg"
+    "/textures/table/wood002-color.jpg",
+    "/textures/table/wood002-normal.jpg",
+    "/textures/table/wood002-roughness.jpg"
   ]);
   const [map, normalMap, roughnessMap] = textures;
 
@@ -248,7 +248,7 @@ const DeskSurface = () => {
       texture.anisotropy = 8;
       texture.wrapS = RepeatWrapping;
       texture.wrapT = RepeatWrapping;
-      texture.repeat.set(26, 0.42);
+      texture.repeat.set(12, 0.55);
       texture.anisotropy = 8;
       texture.needsUpdate = true;
     }

@@ -8,31 +8,32 @@ interface Swatch {
 }
 
 const TABLE_SWATCHES: readonly Swatch[] = [
-  { id: "wood-h", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
-  { id: "wood-v", image: "/textures/wood008-color.jpg", base: "#4a3324" },
-  { id: "walnut", base: "#3b2a1d" },
-  { id: "oak", base: "#b08d63" }
+  { id: "wood002", image: "/textures/table/wood002-color.jpg", base: "#6b4f34" },
+  { id: "wood007", image: "/textures/table/wood007-color.jpg", base: "#8a5a35" },
+  { id: "wood092", image: "/textures/table/wood092-color.jpg", base: "#5a4030" },
+  { id: "wood096", image: "/textures/table/wood096-color.jpg", base: "#3f2f26" }
 ];
 
 const BASE_SWATCHES: readonly Swatch[] = [
-  { id: "wood-v", image: "/textures/wood008-color.jpg", base: "#4a3324" },
-  { id: "wood-h", image: "/textures/wood066-color.jpg", base: "#6b4f34" },
-  { id: "graphite", base: "#23262b" },
-  { id: "felt", base: "#1c1a19" }
+  { id: "wood029", image: "/textures/base/wood029-color.jpg", base: "#4a3324" },
+  { id: "wood066", image: "/textures/base/wood066-color.jpg", base: "#6b4f34" },
+  { id: "wood069", image: "/textures/base/wood069-color.jpg", base: "#2f3a2f" },
+  { id: "wood095", image: "/textures/base/wood095-color.jpg", base: "#2a2b30" }
 ];
 
 const WALL_SWATCHES: readonly Swatch[] = [
-  { id: "fabric009", image: "/textures/wall-color.jpg", base: "#5d2b2b" },
-  { id: "fabric028", base: "#8a8378" },
-  { id: "plain", base: "#6f6860" },
-  { id: "gradient", base: "#2b2f3a" }
+  { id: "fabric009", image: "/textures/wall/fabric009-color.jpg", base: "#5d2b2b" },
+  { id: "fabric048", image: "/textures/wall/fabric048-color.jpg", base: "#8a8378" },
+  { id: "leather012", image: "/textures/wall/leather012-color.jpg", base: "#4a3b33" },
+  { id: "woodsiding009", image: "/textures/wall/woodsiding009-color.jpg", base: "#6b6152" }
 ];
 
 const SILHOUETTE_SWATCHES: readonly Swatch[] = [
   { id: "none", base: "transparent" },
-  { id: "leaf", base: "#1b1f18" },
-  { id: "blind", base: "#242830" },
-  { id: "dots", base: "#2a2a2a" }
+  { id: "leafset004", image: "/textures/leaf/leafset004-color.jpg", base: "#1b1f18" },
+  { id: "leafset015", image: "/textures/leaf/leafset015-color.jpg", base: "#23281f" },
+  { id: "leafset019", image: "/textures/leaf/leafset019-color.jpg", base: "#1a2220" },
+  { id: "leafset025", image: "/textures/leaf/leafset025-color.jpg", base: "#20261c" }
 ];
 
 const LIGHT_SWATCHES: readonly Swatch[] = [
@@ -84,8 +85,8 @@ export interface SettingsOverlayProps {
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
-  const [table, setTable] = useState("wood-h");
-  const [base, setBase] = useState("wood-v");
+  const [table, setTable] = useState("wood002");
+  const [base, setBase] = useState("wood029");
   const [wall, setWall] = useState("fabric009");
   const [silhouette, setSilhouette] = useState("none");
   const [light, setLight] = useState("morning");
