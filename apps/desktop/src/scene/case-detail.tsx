@@ -5,8 +5,17 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { useCoverTexture } from "./cover-textures";
 
-const LID_HALF_OPEN = 1.3;
-const LID_MAX = 2.6;
+/** 盒盖开合范围：0 = 合上，180° = 完全翻开。 */
+const LID_MAX = Math.PI;
+/** 松手后的停留位置（半开）。 */
+const LID_REST = Math.PI / 2;
+/** 盘片在盒面平面内的可移动范围（模型单位，Y 为高度、Z 为宽度）。 */
+const DISC_RANGE_Y = 0.35;
+// 模型 +Z 映射到屏幕左侧，所以"向右侧拖动"是负值。
+const DISC_RANGE_Z_MIN = -1.25;
+const DISC_RANGE_Z_MAX = -0.05;
+/** 盘片抓取时离开盒面的距离。 */
+const DISC_LIFT = 0.12;
 
 export interface CaseDetailProps {
   readonly coverPath: string | null;
@@ -14,27 +23,34 @@ export interface CaseDetailProps {
   readonly tint: string;
 }
 
-type DragMode = "none" | "lid" | "case";
+type DragMode = "none" | "lid" | "disc";
 
 /**
  * 详情场景：放大的 CD 盒。
- * - 右半边拖拽 = 开盖（松手停在半开）；其余区域拖拽 = 旋转整盒；
- * - 悬停放大前移；
- * - 开盖后点击盘片 = 盘片移出并自转，同时开始播放。
+ * - 盒子只随鼠标轻微倾斜，不做整圈旋转（保证取出盘片后面向正前方）；
+ * - 右半边拖拽 = 开盖（0–180°，松手停半开）；
+ * - 开盖后按住盘片拖动：盘片先离开盒面，再在平行于盒面的平面内移动，并限制在不会穿模的范围内。
  */
 export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
   const texture = useCoverTexture(coverPath);
   const { scene } = useLoader(GLTFLoader, CASE_MODEL_URL);
-  const invalidate = useThree((state) => state.invalidate);
+  const { gl, invalidate } = useThree();
   const built = useMemo(() => buildCaseModel(scene, texture, tint, 1.15, true), [scene, texture, tint]);
 
   const modelRef = useRef<Group>(null);
-  const [hovered, setHovered] = useState(false);
-  const [discOut, setDiscOut] = useState(false);
-  const drag = useRef({ mode: "none" as DragMode, lastX: 0, moved: 0, lidTarget: 0, caseRotation: 0 });
+  const [lidAngle, setLidAngle] = useState(0);
+  const [discTaken, setDiscTaken] = useState(false);
+  const pointer = useRef({ x: 0, y: 0 });
+  const drag = useRef({
+    mode: "none" as DragMode,
+    lastX: 0,
+    lastY: 0,
+    lid: 0,
+    discY: 0,
+    discZ: 0
+  });
 
   useEffect(() => {
-    // 开发预览：?lid=1 直接半开，?disc=1 直接移出盘片，便于截图核对。
     if (!import.meta.env.DEV) {
       return;
     }
@@ -42,35 +58,94 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
     const params = new URLSearchParams(window.location.search);
 
     if (params.get("lid") === "1") {
-      drag.current.lidTarget = LID_HALF_OPEN;
+      drag.current.lid = LID_REST;
+      setLidAngle(LID_REST);
     }
 
     if (params.get("disc") === "1") {
-      setDiscOut(true);
+      drag.current.discZ = -0.9;
+      drag.current.discY = 0.1;
+      setDiscTaken(true);
     }
   }, []);
+
+  useEffect(() => {
+    const element = gl.domElement;
+
+    const handleMove = (event: PointerEvent): void => {
+      const rect = element.getBoundingClientRect();
+      pointer.current.x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+      pointer.current.y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+
+      if (drag.current.mode === "lid") {
+        const deltaX = event.clientX - drag.current.lastX;
+        drag.current.lastX = event.clientX;
+        drag.current.lid = MathUtils.clamp(drag.current.lid + deltaX * 0.012, 0, LID_MAX);
+        setLidAngle(drag.current.lid);
+      } else if (drag.current.mode === "disc") {
+        const deltaX = event.clientX - drag.current.lastX;
+        const deltaY = event.clientY - drag.current.lastY;
+        drag.current.lastX = event.clientX;
+        drag.current.lastY = event.clientY;
+
+        // 屏幕位移 → 盒面内的模型位移（盒宽约 2.2 模型单位 ≈ 420px）。
+        drag.current.discZ = MathUtils.clamp(
+          drag.current.discZ - deltaX * 0.0052,
+          DISC_RANGE_Z_MIN,
+          DISC_RANGE_Z_MAX
+        );
+        drag.current.discY = MathUtils.clamp(drag.current.discY - deltaY * 0.0052, -DISC_RANGE_Y, DISC_RANGE_Y);
+      }
+
+      invalidate();
+    };
+
+    const handleUp = (): void => {
+      if (drag.current.mode === "lid") {
+        drag.current.lid = drag.current.lid > 0.35 ? LID_REST : 0;
+        setLidAngle(drag.current.lid);
+      }
+
+      drag.current.mode = "none";
+      invalidate();
+    };
+
+    element.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+
+    return () => {
+      element.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [gl, invalidate]);
 
   useFrame((_frame, delta) => {
     const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
     const model = modelRef.current;
 
     if (model) {
-      model.rotation.y = MathUtils.lerp(model.rotation.y, drag.current.caseRotation, damping);
-      const scale = MathUtils.lerp(model.scale.x, hovered ? 1.06 : 1, damping);
+      // 轻微倾斜：只做 ±8°，保证正面对观众。
+      const targetY = pointer.current.x * 0.14;
+      const targetX = pointer.current.y * -0.09;
+      model.rotation.y = MathUtils.lerp(model.rotation.y, targetY, damping);
+      model.rotation.x = MathUtils.lerp(model.rotation.x, targetX, damping);
+      const scale = MathUtils.lerp(model.scale.x, discTaken ? 1.02 : 1, damping);
       model.scale.setScalar(scale);
-      model.position.z = MathUtils.lerp(model.position.z, 0.2 + (hovered ? 0.22 : 0), damping);
     }
 
     if (built.lidPivot) {
-      built.lidPivot.rotation.y = MathUtils.lerp(built.lidPivot.rotation.y, drag.current.lidTarget, damping);
+      built.lidPivot.rotation.y = MathUtils.lerp(built.lidPivot.rotation.y, drag.current.lid, damping);
     }
 
     if (built.cd) {
-      // 模型空间 +X 是盒外方向；wrapper 已把它映射到 +Z（朝观众）。
-      built.cd.position.x = MathUtils.lerp(built.cd.position.x, discOut ? 0.30 : 0, damping);
+      built.cd.position.x = MathUtils.lerp(built.cd.position.x, discTaken ? DISC_LIFT : 0, damping);
+      built.cd.position.y = MathUtils.lerp(built.cd.position.y, drag.current.discY, damping);
+      built.cd.position.z = MathUtils.lerp(built.cd.position.z, drag.current.discZ, damping);
 
-      if (discOut) {
-        built.cd.rotation.y += delta * 2.2;
+      if (discTaken) {
+        built.cd.rotation.y += delta * 1.2;
       }
     }
 
@@ -80,57 +155,24 @@ export const CaseDetail = ({ coverPath, onPlay, tint }: CaseDetailProps) => {
   return (
     <group
       onPointerDown={(event) => {
-        drag.current.mode = event.point.x > 0 ? "lid" : "case";
-        drag.current.lastX = event.clientX;
-        drag.current.moved = 0;
-      }}
-      onPointerMove={(event) => {
-        if (drag.current.mode === "none") {
+        if (lidAngle < 0.3) {
+          // 未开盖：右半边拖拽开盖。
+          if (event.point.x > 0.05) {
+            drag.current.mode = "lid";
+            drag.current.lastX = event.clientX;
+          }
+
           return;
         }
 
-        const deltaX = event.clientX - drag.current.lastX;
-        drag.current.lastX = event.clientX;
-        drag.current.moved += Math.abs(deltaX);
-
-        if (drag.current.mode === "lid") {
-          drag.current.lidTarget = MathUtils.clamp(drag.current.lidTarget + deltaX * 0.012, 0, LID_MAX);
-        } else {
-          drag.current.caseRotation += deltaX * 0.006;
+        // 已开盖：按住盘片开始拖动（其余位置不响应，避免误触）。
+        if (event.point.x < 0.45) {
+          drag.current.mode = "disc";
+          drag.current.lastX = event.clientX;
+          drag.current.lastY = event.clientY;
+          setDiscTaken(true);
+          onPlay();
         }
-
-        invalidate();
-      }}
-      onPointerOut={() => {
-        setHovered(false);
-        drag.current.mode = "none";
-      }}
-      onPointerOver={() => {
-        setHovered(true);
-      }}
-      onPointerUp={() => {
-        const wasLid = drag.current.mode === "lid";
-        const moved = drag.current.moved;
-        drag.current.mode = "none";
-
-        if (wasLid) {
-          const nextOpen = drag.current.lidTarget > 0.4;
-          drag.current.lidTarget = nextOpen ? LID_HALF_OPEN : 0;
-
-          if (moved < 4 && nextOpen) {
-            setDiscOut((current) => {
-              const next = !current;
-
-              if (next) {
-                onPlay();
-              }
-
-              return next;
-            });
-          }
-        }
-
-        invalidate();
       }}
     >
       <group position={[0, 1.22, 0.2]} ref={modelRef}>
