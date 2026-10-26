@@ -647,9 +647,9 @@ export const GalleryExperience = ({
     <>
       <Canvas
         camera={{ fov: 30, position: [CAMERA_POSITION[0], CAMERA_POSITION[1], CAMERA_POSITION[2]] }}
-        dpr={1}
-        frameloop="demand"
-        gl={{ antialias: false, powerPreference: "high-performance", toneMappingExposure: 0.95 }}
+        dpr={[1, 2]}
+        frameloop="always"
+        gl={{ antialias: true, powerPreference: "high-performance", toneMappingExposure: 0.95 }}
         onCreated={({ camera }) => {
           camera.lookAt(LOOK_AT[0], LOOK_AT[1], LOOK_AT[2]);
         }}
