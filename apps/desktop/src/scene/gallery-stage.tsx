@@ -8,6 +8,7 @@ import type { GalleryGroup } from "../lib/album-groups";
 import { getSeedHue } from "../lib/seed";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
+import { ContactShadow } from "./contact-shadows";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
@@ -22,7 +23,7 @@ const ProceduralEnvironment = () => {
     const environment = generator.fromScene(new RoomEnvironment(), 0.04);
 
     scene.environment = environment.texture;
-    scene.environmentIntensity = 0.9;
+    scene.environmentIntensity = 0.4;
 
     return () => {
       scene.environment = null;
@@ -45,6 +46,9 @@ const PALETTE = ["#c96f5a", "#8fa7b8", "#31506b", "#8a9a52", "#c8a06a", "#8c6b86
 
 const tintOf = (id: string): string => PALETTE[getSeedHue(id) % PALETTE.length] ?? PALETTE[0] ?? "#c96f5a";
 const VISIBLE = 7;
+
+/** 台面顶面（BASE_Y - 0.26）上方 1.5mm：接触阴影贴片的位置。 */
+const CONTACT_SHADOW_Y = -0.2585;
 
 type Stage = "gallery" | "expanded" | "player";
 
@@ -115,6 +119,7 @@ const Disc = ({
 
   return (
     <group position={[position[0], position[1], position[2]]} rotation={[0, rotationY, 0]}>
+      <ContactShadow depth={0.3} width={0.68} y={CONTACT_SHADOW_Y} />
       <mesh
         castShadow
         onClick={(event) => {
@@ -187,7 +192,7 @@ const WallSurface = () => {
 
 /** 只有一面墙（详情场景用）。 */
 const BackWall = () => (
-  <mesh position={[0, BASE_Y + 0.55, -0.34]}>
+  <mesh position={[0, BASE_Y + 0.55, -0.34]} receiveShadow>
     <boxGeometry args={[40, 3.4, 0.08]} />
     <WallSurface />
   </mesh>
@@ -262,7 +267,7 @@ const DeskSurface = () => {
   }, [map, textures]);
 
   return (
-    <mesh position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
+    <mesh castShadow position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
       <boxGeometry args={[40, 0.12, 0.62]} />
       <meshStandardMaterial
         map={map ?? null}
@@ -287,7 +292,7 @@ const Shelf = () => (
       <CabinetSurface />
     </mesh>
     {/* 背墙 */}
-    <mesh position={[0, BASE_Y + 0.55, -0.34]}>
+    <mesh position={[0, BASE_Y + 0.55, -0.34]} receiveShadow>
       <boxGeometry args={[40, 3.4, 0.08]} />
       <WallSurface />
     </mesh>
@@ -680,23 +685,23 @@ export const GalleryExperience = ({
         <FrameProbe />
         <LightShafts />
         <DappledLight />
-        <hemisphereLight args={["#cfe0ff", "#2a2118", 0.2]} />
-        <ambientLight intensity={0.35} />
+        <hemisphereLight args={["#cfe0ff", "#2a2118", 0.12]} />
+        <ambientLight intensity={0.12} />
         <directionalLight
           castShadow
           color="#fff0dc"
-          intensity={2.2}
-          position={[3.6, 4.4, 2.4]}
-          shadow-bias={-0.0004}
+          intensity={2.4}
+          position={[2.8, 3.6, 3.4]}
+          shadow-bias={-0.0003}
           shadow-camera-bottom={-1.6}
           shadow-camera-far={14}
           shadow-camera-left={-6}
           shadow-camera-near={1}
           shadow-camera-right={6}
           shadow-camera-top={4}
-          shadow-mapSize-height={1024}
-          shadow-mapSize-width={1024}
-          shadow-normalBias={0.02}
+          shadow-mapSize-height={2048}
+          shadow-mapSize-width={2048}
+          shadow-normalBias={0.018}
         />
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 

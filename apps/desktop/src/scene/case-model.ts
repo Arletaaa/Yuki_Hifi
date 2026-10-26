@@ -45,7 +45,7 @@ export const buildCaseModel = (
       return;
     }
 
-    // 阴影只由台面接收；盒子自身不投影，避免每帧多一遍 126 个 mesh 的深度 pass。
+    // 盒子只有 126 个 mesh，投影开销可控；台面/墙面接收阴影后才能看出盒子离台面的高度。
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
