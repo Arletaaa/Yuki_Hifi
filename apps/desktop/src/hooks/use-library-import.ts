@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ImportSkippedFile, LibraryImportProgress, LibraryImportResult } from "@arlhifi/shared";
+import { getDesktopErrorMessage } from "../lib/desktop-error";
 import { usePlayerStore } from "../store/player-store";
 
 export type LibraryImportPhase = "idle" | "running" | "done" | "error";
@@ -12,17 +13,6 @@ export interface LibraryImportState {
 
 const idleState: LibraryImportState = { message: null, phase: "idle", progress: null };
 const webPreviewMessage = "网页预览无法导入音乐，请使用 Electron 桌面应用。";
-
-/** Electron 会给 invoke 的异常加上 "Error invoking remote method…" 前缀，展示前剥掉。 */
-const toErrorMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message.trim() : "";
-
-  if (message.length === 0) {
-    return "导入失败，请重试。";
-  }
-
-  return message.replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/u, "").trim() || "导入失败，请重试。";
-};
 
 const countReason = (skipped: readonly ImportSkippedFile[], reason: ImportSkippedFile["reason"]): number =>
   skipped.filter((entry) => entry.reason === reason).length;
@@ -109,7 +99,7 @@ export const useLibraryImport = () => {
         rebuildQueueFromLibrary();
         setState({ message: describeImport(result), phase: "done", progress: null });
       } catch (error) {
-        setState({ message: toErrorMessage(error), phase: "error", progress: null });
+        setState({ message: getDesktopErrorMessage(error, "导入失败，请重试。"), phase: "error", progress: null });
       }
     },
     [loadLibrary, rebuildQueueFromLibrary]

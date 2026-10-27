@@ -58,6 +58,12 @@ export interface ArltHifiDesktopApi {
   readonly importAudioFolder: () => Promise<FolderImportResult>;
   /** 读取已托管的曲库（manifest）。 */
   readonly loadLibrary: () => Promise<readonly Track[]>;
+  /** 重命名副本文件与显示标题；id 不变。 */
+  readonly renameTrack: (trackId: string, title: string) => Promise<Track>;
+  /** 选择图片并写为该曲目的封面；取消返回 null。 */
+  readonly setTrackCover: (trackId: string) => Promise<Track | null>;
+  /** 删除副本文件并从曲库移除。 */
+  readonly deleteTrack: (trackId: string) => Promise<boolean>;
   readonly onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void) => () => void;
   readonly selectBackgroundImage: () => Promise<BackgroundImageSelectionResult>;
   readonly loadSettings: () => Promise<AppSettings>;

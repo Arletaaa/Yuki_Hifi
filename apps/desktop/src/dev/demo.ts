@@ -48,9 +48,14 @@ const demoTracks: readonly Track[] = [
 ];
 
 const webPreviewImportMessage = "网页预览无法导入音乐，请使用 Electron 桌面应用。";
+const webPreviewManageMessage = "网页预览无法管理曲库，请使用 Electron 桌面应用。";
 
 const rejectWebPreviewImport = async (): Promise<never> => {
   throw new Error(webPreviewImportMessage);
+};
+
+const rejectWebPreviewManage = async (): Promise<never> => {
+  throw new Error(webPreviewManageMessage);
 };
 
 const createDemoApi = (): ArltHifiDesktopApi => ({
@@ -59,6 +64,9 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   importAudioFiles: rejectWebPreviewImport,
   importAudioFolder: rejectWebPreviewImport,
   loadLibrary: async () => demoTracks,
+  renameTrack: rejectWebPreviewManage,
+  setTrackCover: rejectWebPreviewManage,
+  deleteTrack: rejectWebPreviewManage,
   onLibraryImportProgress: () => () => {},
   selectBackgroundImage: async () => ({ canceled: true, filePath: null }),
   loadSettings: async () => ({ ...defaultAppSettings }),

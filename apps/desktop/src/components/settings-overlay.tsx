@@ -1,6 +1,10 @@
+import { useMemo, useState } from "react";
+import { formatDuration, type Track } from "@arlhifi/shared";
+import { useLibraryImport } from "../hooks/use-library-import";
+import { useLibraryManage } from "../hooks/use-library-manage";
+import { librarySortOptions, sortTracks } from "../lib/library-filter";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
-import { useLibraryImport } from "../hooks/use-library-import";
 
 interface Swatch {
   readonly base: string;
@@ -81,17 +85,49 @@ export interface SettingsOverlayProps {
   readonly onClose: () => void;
 }
 
-/** 全透明设置浮层：音乐库导入 + 两列材质选择 + 音量 + 置底版权。 */
+/** 全透明设置浮层：音乐库导入/排序/管理 + 两列材质选择 + 音量 + 置底版权。 */
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
-  const libraryCount = usePlayerStore((state) => state.library.length);
+  const library = usePlayerStore((state) => state.library);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const setScenePreset = useSettingsStore((state) => state.setScenePreset);
+  const librarySort = useSettingsStore((state) => state.librarySort);
+  const setLibrarySort = useSettingsStore((state) => state.setLibrarySort);
   const { busy, importFiles, importFolder, state: importState } = useLibraryImport();
+  const { busyTrackId, deleteTrack, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [confirmTrackId, setConfirmTrackId] = useState<string | null>(null);
+  const sortedTracks = useMemo(() => sortTracks(library, librarySort), [library, librarySort]);
   const progressLabel = importState.progress
     ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
     : "正在导入…";
+
+  const beginRename = (track: Track): void => {
+    setConfirmTrackId(null);
+    setEditingTrackId(track.id);
+    setDraftTitle(track.title);
+  };
+
+  const cancelRename = (): void => {
+    setEditingTrackId(null);
+    setDraftTitle("");
+  };
+
+  const submitRename = async (track: Track): Promise<void> => {
+    const title = draftTitle.trim();
+
+    if (title.length === 0 || title === track.title) {
+      cancelRename();
+      return;
+    }
+
+    if (await renameTrack(track.id, title)) {
+      cancelRename();
+    }
+  };
 
   return (
     <div className="settings-overlay__inner">
@@ -102,7 +138,7 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
       <section aria-label="音乐库" className="library-import">
         <div className="library-import__head">
           <p className="preset-group__label">音乐库</p>
-          <p className="library-import__count">{libraryCount} 首已托管</p>
+          <p className="library-import__count">{library.length} 首已托管</p>
         </div>
         <div className="library-import__actions">
           <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
@@ -125,7 +161,174 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             {importState.message}
           </p>
         ) : null}
+
+        <div className="library-sort">
+          <p className="preset-group__label">排序</p>
+          <div className="library-sort__options" role="group" aria-label="曲库排序">
+            {librarySortOptions.map((option) => (
+              <button
+                aria-pressed={option.value === librarySort}
+                className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
+                key={option.value}
+                onClick={() => {
+                  setLibrarySort(option.value);
+                }}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
+
+      {library.length > 0 ? (
+        <section aria-label="曲目管理" className="library-manage">
+          <div className="library-manage__head">
+            <p className="preset-group__label">曲目</p>
+            <button
+              aria-expanded={manageOpen}
+              className="library-manage__toggle"
+              onClick={() => {
+                setManageOpen((open) => !open);
+                setEditingTrackId(null);
+                setConfirmTrackId(null);
+              }}
+              type="button"
+            >
+              {manageOpen ? "收起" : `管理 ${library.length} 首`}
+            </button>
+          </div>
+
+          {manageOpen ? (
+            <div className="library-manage__body">
+              {manageError ? (
+                <p className="library-import__status is-error" role="alert">
+                  {manageError}
+                </p>
+              ) : null}
+
+              <ul className="library-manage__list">
+                {sortedTracks.map((track) => {
+                  const editing = editingTrackId === track.id;
+                  const confirming = confirmTrackId === track.id;
+                  const busyRow = busyTrackId === track.id;
+
+                  return (
+                    <li className="library-manage__row" key={track.id}>
+                      <div className="library-manage__meta">
+                        {editing ? (
+                          <input
+                            aria-label={`重命名 ${track.title}`}
+                            autoFocus
+                            className="library-manage__input"
+                            onChange={(event) => {
+                              setDraftTitle(event.currentTarget.value);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void submitRename(track);
+                              } else if (event.key === "Escape") {
+                                cancelRename();
+                              }
+                            }}
+                            value={draftTitle}
+                          />
+                        ) : (
+                          <span className="library-manage__title">{track.title}</span>
+                        )}
+                        <span className="library-manage__sub">
+                          {track.artist} · {track.album} · {formatDuration(track.durationSeconds)}
+                        </span>
+                      </div>
+
+                      <div className="library-manage__actions">
+                        {editing ? (
+                          <>
+                            <button
+                              className="library-manage__action"
+                              disabled={busyRow}
+                              onClick={() => {
+                                void submitRename(track);
+                              }}
+                              type="button"
+                            >
+                              保存
+                            </button>
+                            <button className="library-manage__action" onClick={cancelRename} type="button">
+                              取消
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="library-manage__action"
+                              disabled={busyRow}
+                              onClick={() => {
+                                beginRename(track);
+                              }}
+                              type="button"
+                            >
+                              重命名
+                            </button>
+                            <button
+                              className="library-manage__action"
+                              disabled={busyRow}
+                              onClick={() => {
+                                setConfirmTrackId(null);
+                                void setTrackCover(track.id);
+                              }}
+                              type="button"
+                            >
+                              封面
+                            </button>
+                            {confirming ? (
+                              <>
+                                <button
+                                  className="library-manage__action is-danger"
+                                  disabled={busyRow}
+                                  onClick={() => {
+                                    setConfirmTrackId(null);
+                                    void deleteTrack(track.id);
+                                  }}
+                                  type="button"
+                                >
+                                  确认删除
+                                </button>
+                                <button
+                                  className="library-manage__action"
+                                  onClick={() => {
+                                    setConfirmTrackId(null);
+                                  }}
+                                  type="button"
+                                >
+                                  取消
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                className="library-manage__action is-danger"
+                                disabled={busyRow}
+                                onClick={() => {
+                                  setConfirmTrackId(track.id);
+                                }}
+                                type="button"
+                              >
+                                删除
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="preset-pair">
         <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />

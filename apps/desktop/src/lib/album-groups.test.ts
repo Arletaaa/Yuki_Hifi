@@ -75,4 +75,23 @@ describe("gallery grouping", () => {
     expect(groups.map((group) => group.title)).toEqual(["Alpha", "Zeta"]);
     expect(groupTracksForGallery([])).toEqual([]);
   });
+
+  it("supports artist and manifest-order sorting", () => {
+    const tracks = [
+      createTrack("1", "A1", "Zeta", "First"),
+      createTrack("2", "A2", "Alpha", "Second")
+    ];
+
+    expect(groupTracksForGallery(tracks, "imported").map((group) => group.title)).toEqual(["First", "Second"]);
+    expect(groupTracksForGallery(tracks, "artist").map((group) => group.title)).toEqual(["Second", "First"]);
+  });
+
+  it("reports the summed album duration used by duration sorting", () => {
+    const groups = groupTracksForGallery([
+      createTrack("1", "A1", "Kaze", "Terrace EP"),
+      createTrack("2", "A2", "Kaze", "Terrace EP")
+    ]);
+
+    expect(groups[0]?.durationSeconds).toBe(200);
+  });
 });

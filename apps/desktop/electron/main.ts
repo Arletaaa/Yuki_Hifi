@@ -11,6 +11,7 @@ import type {
   Track
 } from "@arlhifi/shared";
 import { importAudioFiles } from "./library-import.js";
+import { removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { collectAudioFilePaths } from "./music-scanner.js";
@@ -23,6 +24,9 @@ const selectAudioFilesChannel = "library:select-files";
 const importAudioFilesChannel = "library:import-files";
 const importAudioFolderChannel = "library:import-folder";
 const loadLibraryChannel = "library:load";
+const renameTrackChannel = "library:rename-track";
+const setTrackCoverChannel = "library:set-track-cover";
+const deleteTrackChannel = "library:delete-track";
 const libraryImportProgressChannel = "library:import-progress";
 const selectBackgroundImageChannel = "settings:select-background-image";
 const loadSettingsChannel = "settings:load";
@@ -31,6 +35,9 @@ const mediaProtocolAccess = createMediaProtocolAccess();
 
 const audioDialogFilters: electron.FileFilter[] = [
   { name: "音频", extensions: ["flac", "wav", "mp3", "m4a", "ogg"] }
+];
+const imageDialogFilters: electron.FileFilter[] = [
+  { name: "图片", extensions: ["png", "jpg", "jpeg", "webp"] }
 ];
 
 registerMediaProtocolPrivileges();
@@ -41,6 +48,14 @@ const getActiveWindow = (): electron.BrowserWindow | null =>
 const getCoversDirectory = (): string => join(app.getPath("userData"), "covers");
 const getLibraryDirectory = (): string => join(app.getPath("userData"), "library");
 const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
+
+/** 曲库整体变化后刷新媒体协议白名单（音频整体替换，封面累加）。 */
+const applyMediaAccess = (tracks: readonly Track[]): void => {
+  mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
+  mediaProtocolAccess.addImageFilePaths(
+    tracks.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
+  );
+};
 
 const showDialog = async (
   options: electron.OpenDialogOptions
@@ -62,10 +77,7 @@ const loadManagedLibrary = async (): Promise<readonly Track[]> => {
 
   const tracks = pruned.entries.map((entry) => entry.track);
 
-  mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
-  mediaProtocolAccess.addImageFilePaths(
-    tracks.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
-  );
+  applyMediaAccess(tracks);
 
   return tracks;
 };
@@ -149,6 +161,93 @@ ipcMain.handle(importAudioFolderChannel, async (event): Promise<FolderImportResu
 });
 
 ipcMain.handle(loadLibraryChannel, async (): Promise<readonly Track[]> => loadManagedLibrary());
+
+ipcMain.handle(renameTrackChannel, async (_event, rawTrackId: unknown, rawTitle: unknown): Promise<Track> => {
+  if (typeof rawTrackId !== "string" || typeof rawTitle !== "string") {
+    throw new Error("曲目 id 与标题不能为空。");
+  }
+
+  const title = rawTitle.trim();
+
+  if (title.length === 0) {
+    throw new Error("标题不能为空。");
+  }
+
+  if (title.length > 200) {
+    throw new Error("标题过长。");
+  }
+
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = await renameLibraryTrack({ entries: manifest.entries, title, trackId: rawTrackId });
+
+  if (!outcome) {
+    throw new Error("找不到该曲目。");
+  }
+
+  await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+
+  return outcome.track;
+});
+
+ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {
+  if (typeof rawTrackId !== "string") {
+    throw new Error("曲目 id 不能为空。");
+  }
+
+  const result = await showDialog({
+    title: "选择封面图片",
+    properties: ["openFile"],
+    filters: imageDialogFilters
+  });
+  const sourcePath = result.filePaths[0] ?? null;
+
+  if (result.canceled || !sourcePath) {
+    return null;
+  }
+
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = await setLibraryTrackCover({
+    coversDirectory: getCoversDirectory(),
+    entries: manifest.entries,
+    sourcePath,
+    trackId: rawTrackId
+  });
+
+  if (!outcome) {
+    throw new Error("找不到该曲目。");
+  }
+
+  await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+
+  return outcome.track;
+});
+
+ipcMain.handle(deleteTrackChannel, async (_event, rawTrackId: unknown): Promise<boolean> => {
+  if (typeof rawTrackId !== "string") {
+    throw new Error("曲目 id 不能为空。");
+  }
+
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = await removeLibraryTrack({
+    coversDirectory: getCoversDirectory(),
+    entries: manifest.entries,
+    trackId: rawTrackId
+  });
+
+  if (!outcome) {
+    return false;
+  }
+
+  await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+
+  return true;
+});
 
 ipcMain.handle(loadSettingsChannel, async (): Promise<AppSettings> => {
   const settings = await readSettings(app.getPath("userData"));

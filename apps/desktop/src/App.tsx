@@ -1,26 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppSettings } from "@arlhifi/shared";
+import type { AppSettings, Track } from "@arlhifi/shared";
 import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useSaveSettings } from "./hooks/use-settings-sync";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
 import { groupTracksForGallery } from "./lib/album-groups";
+import { filterTracks } from "./lib/library-filter";
 import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useSettingsStore } from "./store/settings-store";
 import { useWallpaperStore } from "./store/wallpaper-store";
 
-/** 近似匹配：忽略大小写与空白，子串命中即可。 */
-const matchesQuery = (values: readonly string[], query: string): boolean => {
-  const needle = query.trim().toLowerCase().replace(/\s+/gu, "");
-
-  if (needle.length === 0) {
-    return true;
-  }
-
-  return values.some((value) => value.toLowerCase().replace(/\s+/gu, "").includes(needle));
-};
+const MAX_SEARCH_RESULTS = 8;
 
 export const App = () => {
   useAudioPlayback();
@@ -28,6 +20,8 @@ export const App = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(() => new URLSearchParams(window.location.search).get("settings") === "1");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeResultIndex, setActiveResultIndex] = useState(0);
+  const [focusRequest, setFocusRequest] = useState<{ groupId: string; nonce: number } | null>(null);
 
   const library = usePlayerStore((state) => state.library);
   const favorites = usePlayerStore((state) => state.favorites);
@@ -41,17 +35,18 @@ export const App = () => {
   const playNext = usePlayerStore((state) => state.playNext);
   const playPrevious = usePlayerStore((state) => state.playPrevious);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
+  const librarySort = useSettingsStore((state) => state.librarySort);
   const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
 
-  const visibleTracks = useMemo(() => {
+  const searchResults = useMemo(() => {
     if (searchQuery.trim().length === 0) {
-      return library;
+      return [];
     }
 
-    return library.filter((track) => matchesQuery([track.title, track.artist, track.album], searchQuery));
+    return filterTracks(library, searchQuery).slice(0, MAX_SEARCH_RESULTS);
   }, [library, searchQuery]);
 
-  const galleryGroups = useMemo(() => groupTracksForGallery(visibleTracks), [visibleTracks]);
+  const galleryGroups = useMemo(() => groupTracksForGallery(library, librarySort), [library, librarySort]);
 
   const favoriteGroupIds = useMemo(() => {
     const favoriteSet = new Set(favorites);
@@ -122,6 +117,49 @@ export const App = () => {
     };
   }, []);
 
+  const flyToTrack = (track: Track): void => {
+    const group = galleryGroups.find((candidate) => candidate.trackIds.includes(track.id));
+
+    if (!group) {
+      return;
+    }
+
+    setFocusRequest((current) => ({ groupId: group.id, nonce: (current?.nonce ?? 0) + 1 }));
+    setSearchQuery("");
+    setActiveResultIndex(0);
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveResultIndex((index) => Math.min(index + 1, Math.max(0, searchResults.length - 1)));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveResultIndex((index) => Math.max(0, index - 1));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const target = searchResults[activeResultIndex] ?? searchResults[0];
+
+      if (target) {
+        event.preventDefault();
+        flyToTrack(target);
+      }
+
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setSearchQuery("");
+      setActiveResultIndex(0);
+    }
+  };
+
+  const showSearchResults = searchQuery.trim().length > 0;
 
   return (
     <div className="app app--gallery">
@@ -129,6 +167,8 @@ export const App = () => {
         currentTrackId={currentTrackId}
         durationSeconds={durationSeconds}
         favoriteGroupIds={favoriteGroupIds}
+        focusGroupId={focusRequest?.groupId ?? null}
+        focusNonce={focusRequest?.nonce ?? 0}
         groups={galleryGroups}
         onNext={playNext}
         onPlayTrack={playTrack}
@@ -141,15 +181,53 @@ export const App = () => {
 
       <div className="gallery-topbar">
         <input
+          aria-activedescendant={
+            searchResults.length > 0 ? `gallery-search-result-${activeResultIndex}` : undefined
+          }
+          aria-autocomplete="list"
+          aria-controls="gallery-search-results"
+          aria-expanded={showSearchResults}
           aria-label="搜索曲目"
           className="gallery-search"
           onChange={(event) => {
             setSearchQuery(event.currentTarget.value);
+            setActiveResultIndex(0);
           }}
+          onKeyDown={handleSearchKeyDown}
           placeholder="搜索专辑 · 艺术家 · 曲目"
+          role="combobox"
           type="search"
           value={searchQuery}
         />
+
+        {showSearchResults ? (
+          <ul aria-label="搜索结果" className="search-results" id="gallery-search-results" role="listbox">
+            {searchResults.length === 0 ? (
+              <li className="search-results__empty" role="presentation">没有匹配的曲目</li>
+            ) : (
+              searchResults.map((track, index) => (
+                <li
+                  aria-selected={index === activeResultIndex}
+                  className={`search-results__item${index === activeResultIndex ? " is-active" : ""}`}
+                  id={`gallery-search-result-${index}`}
+                  key={track.id}
+                  onClick={() => {
+                    flyToTrack(track);
+                  }}
+                  onMouseEnter={() => {
+                    setActiveResultIndex(index);
+                  }}
+                  role="option"
+                >
+                  <span className="search-results__title">{track.title}</span>
+                  <span className="search-results__meta">
+                    {track.artist} · {track.album}
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
       </div>
 
         <button

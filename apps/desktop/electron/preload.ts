@@ -15,6 +15,9 @@ const selectAudioFilesChannel = "library:select-files";
 const importAudioFilesChannel = "library:import-files";
 const importAudioFolderChannel = "library:import-folder";
 const loadLibraryChannel = "library:load";
+const renameTrackChannel = "library:rename-track";
+const setTrackCoverChannel = "library:set-track-cover";
+const deleteTrackChannel = "library:delete-track";
 const libraryImportProgressChannel = "library:import-progress";
 const selectBackgroundImageChannel = "settings:select-background-image";
 const loadSettingsChannel = "settings:load";
@@ -33,6 +36,15 @@ const desktopApi: ArltHifiDesktopApi = {
   },
   loadLibrary: async (): Promise<readonly Track[]> => {
     return ipcRenderer.invoke(loadLibraryChannel) as Promise<readonly Track[]>;
+  },
+  renameTrack: async (trackId: string, title: string): Promise<Track> => {
+    return ipcRenderer.invoke(renameTrackChannel, trackId, title) as Promise<Track>;
+  },
+  setTrackCover: async (trackId: string): Promise<Track | null> => {
+    return ipcRenderer.invoke(setTrackCoverChannel, trackId) as Promise<Track | null>;
+  },
+  deleteTrack: async (trackId: string): Promise<boolean> => {
+    return ipcRenderer.invoke(deleteTrackChannel, trackId) as Promise<boolean>;
   },
   onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void): (() => void) => {
     const listener = (_event: unknown, progress: LibraryImportProgress): void => {

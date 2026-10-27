@@ -12,6 +12,8 @@ import { ContactShadow } from "./contact-shadows";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
+import { usePlayerStore } from "../store/player-store";
+import { VolumeRing } from "../components/volume-ring";
 import { DappledLight, LightShafts } from "./light-effects";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
@@ -56,6 +58,7 @@ type Stage = "gallery" | "expanded" | "player";
 
 interface DiscProps {
   readonly coverPath: string | null;
+  readonly highlighted?: boolean;
   readonly id: string;
   readonly isCurrent: boolean;
   readonly isFavorite: boolean;
@@ -84,6 +87,7 @@ const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | nu
 };
 const Disc = ({
   coverPath,
+  highlighted = false,
   id,
   isCurrent,
   isFavorite,
@@ -109,8 +113,10 @@ const Disc = ({
 
     const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
 
-    group.position.z = MathUtils.lerp(group.position.z, hovered ? 0.07 : 0, damping);
-    group.rotation.y = MathUtils.lerp(group.rotation.y, hovered ? 0.18 : 0, damping);
+    // 搜索命中后"抽出"：比 hover 推得更前、抬得更高，随后自动收回。
+    group.position.z = MathUtils.lerp(group.position.z, highlighted ? 0.16 : hovered ? 0.07 : 0, damping);
+    group.rotation.y = MathUtils.lerp(group.rotation.y, highlighted ? 0.24 : hovered ? 0.18 : 0, damping);
+    group.scale.setScalar(MathUtils.lerp(group.scale.x, highlighted ? 1.06 : 1, damping));
 
     if (spinning && meshRef.current) {
       meshRef.current.rotation.z = state.clock.elapsedTime * -0.35;
@@ -318,13 +324,19 @@ const Carousel = ({
   groups,
   currentGroupId,
   favoriteGroupIds,
+  focusIndex,
+  focusNonce,
+  highlightedGroupId,
   onHover,
   onOpen,
   scrollRef
 }: {
   readonly currentGroupId: string | null;
   readonly favoriteGroupIds: readonly string[];
+  readonly focusIndex: number;
+  readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
+  readonly highlightedGroupId: string | null;
   readonly onHover: (label: string | null) => void;
   readonly onOpen: (group: GalleryGroup) => void;
   readonly scrollRef: { current: number };
@@ -338,6 +350,32 @@ const Carousel = ({
 
   const state = useRef({ dragging: false, lastX: 0, offset: 0, target: 0, velocity: 0 });
   const favoriteSet = useMemo(() => new Set(favoriteGroupIds), [favoriteGroupIds]);
+
+  // 搜索命中：把目标槽位滑到正中（循环模式走最短方向），不改相机。
+  useEffect(() => {
+    if (focusIndex < 0) {
+      return;
+    }
+
+    const pointer = state.current;
+    const desired = -focusIndex * GAP;
+
+    if (loopable) {
+      let delta = desired - pointer.offset;
+      delta = ((delta % length) + length) % length;
+
+      if (delta > length / 2) {
+        delta -= length;
+      }
+
+      pointer.target = pointer.offset + delta;
+    } else {
+      pointer.target = desired;
+    }
+
+    pointer.velocity = 0;
+    invalidate();
+  }, [focusIndex, focusNonce, invalidate, length, loopable]);
 
   useEffect(() => {
     const element = gl.domElement;
@@ -447,6 +485,7 @@ const Carousel = ({
         {groups.slice(0, 400).map((group) => (
           <Disc
             coverPath={group.coverPath}
+            highlighted={group.id === highlightedGroupId}
             id={group.id}
             isCurrent={group.id === currentGroupId}
             isFavorite={favoriteSet.has(group.id)}
@@ -620,21 +659,26 @@ const PlayerStage = ({
 
 export interface GalleryExperienceProps {
   readonly currentTrackId: string | null;
-  readonly favoriteGroupIds: readonly string[];
-  readonly groups: readonly GalleryGroup[];
-  readonly onPlayTrack: (track: Track) => void;
-  readonly playing: boolean;
-  readonly positionSeconds: number;
   readonly durationSeconds: number;
+  readonly favoriteGroupIds: readonly string[];
+  readonly focusGroupId: string | null;
+  readonly focusNonce: number;
+  readonly groups: readonly GalleryGroup[];
   readonly onNext: () => void;
+  readonly onPlayTrack: (track: Track) => void;
   readonly onPrev: () => void;
   readonly onToggle: () => void;
+  readonly playing: boolean;
+  readonly positionSeconds: number;
   readonly tracks: readonly Track[];
 }
 
 export const GalleryExperience = ({
   currentTrackId,
+  durationSeconds,
   favoriteGroupIds,
+  focusGroupId,
+  focusNonce,
   groups,
   onNext,
   onPlayTrack,
@@ -642,14 +686,16 @@ export const GalleryExperience = ({
   onToggle,
   playing,
   positionSeconds,
-  durationSeconds,
   tracks
 }: GalleryExperienceProps) => {
   const [stage, setStage] = useState<Stage>("gallery");
   const [expandedGroup, setExpandedGroup] = useState<GalleryGroup | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
+  const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
   const scrollRef = useRef(0);
+  const volume = usePlayerStore((state) => state.volume);
+  const setVolume = usePlayerStore((state) => state.setVolume);
   const currentTrack = tracks.find((track) => track.id === currentTrackId) ?? null;
   const currentGroupId = useMemo(() => {
     const group = groups.find((candidate) => currentTrackId !== null && candidate.trackIds.includes(currentTrackId));
@@ -664,6 +710,27 @@ export const GalleryExperience = ({
       setDetailGroup(groups[1] ?? null);
     }
   }, [groups]);
+
+  // 搜索飞行：无论在哪个层级都回到画廊，定位目标 CD 并让它"抽出"两秒。
+  useEffect(() => {
+    if (!focusGroupId) {
+      return;
+    }
+
+    setDetailGroup(null);
+    setStage("gallery");
+    setHighlightedGroupId(focusGroupId);
+
+    const timer = window.setTimeout(() => {
+      setHighlightedGroupId(null);
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [focusGroupId, focusNonce]);
+
+  const searchFocusIndex = focusGroupId ? groups.findIndex((group) => group.id === focusGroupId) : -1;
   const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
   const focusIndex = focusGroup ? groups.findIndex((group) => group.id === focusGroup.id) + 1 : 0;
 
@@ -710,7 +777,10 @@ export const GalleryExperience = ({
           <Carousel
             currentGroupId={currentGroupId}
             favoriteGroupIds={favoriteGroupIds}
+            focusIndex={searchFocusIndex}
+            focusNonce={focusNonce}
             groups={groups}
+            highlightedGroupId={highlightedGroupId}
             onHover={setHoverLabel}
             scrollRef={scrollRef}
             onOpen={(group) => {
@@ -864,6 +934,9 @@ export const GalleryExperience = ({
           </button>
         </div>
       ) : null}
+
+      {/* 有当前曲目就显示音量环：详情场景里开始播放后也能直接调音量。 */}
+      {currentTrack ? <VolumeRing onChange={setVolume} value={volume} /> : null}
     </>
   );
 };

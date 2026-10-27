@@ -11,6 +11,9 @@ export type ThemeMode = "dark" | "light";
 
 export type MotionTier = "off" | "standard" | "rich";
 
+/** 曲库排序：标题 / 艺术家 / 时长 / 导入顺序（manifest 顺序）。 */
+export type LibrarySortKey = "title" | "artist" | "duration" | "imported";
+
 export interface Track {
   readonly id: string;
   readonly title: string;
@@ -61,6 +64,7 @@ export const defaultScenePreset: ScenePreset = {
 export interface AppSettings {
   readonly backgroundImagePath: string | null;
   readonly favorites: readonly string[];
+  readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly theme: ThemeMode;
   readonly volume: number;
@@ -72,6 +76,7 @@ export interface AppSettings {
 export const defaultAppSettings: AppSettings = {
   backgroundImagePath: null,
   favorites: [],
+  librarySort: "title",
   motionTier: "standard",
   theme: "dark",
   volume: 72,

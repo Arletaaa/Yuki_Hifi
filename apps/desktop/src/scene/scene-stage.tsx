@@ -12,6 +12,8 @@ export interface SceneStageProps {
   readonly currentTrackId: string | null;
   readonly durationSeconds: number;
   readonly favoriteGroupIds: readonly string[];
+  readonly focusGroupId: string | null;
+  readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
   readonly onNext: () => void;
   readonly onPlayTrack: (track: Track) => void;
@@ -26,6 +28,8 @@ export const SceneStage = ({
   currentTrackId,
   durationSeconds,
   favoriteGroupIds,
+  focusGroupId,
+  focusNonce,
   groups,
   onNext,
   onPlayTrack,
@@ -50,6 +54,8 @@ export const SceneStage = ({
               currentTrackId={currentTrackId}
               durationSeconds={durationSeconds}
               favoriteGroupIds={favoriteGroupIds}
+              focusGroupId={focusGroupId}
+              focusNonce={focusNonce}
               groups={groups}
               onNext={onNext}
               onPlayTrack={onPlayTrack}

@@ -1,13 +1,10 @@
-import type { Track } from "@arlhifi/shared";
-import { getAudioFormatLabel } from "@arlhifi/shared";
-
-export type LibrarySortKey = "title" | "artist" | "duration" | "format";
+import type { LibrarySortKey, Track } from "@arlhifi/shared";
 
 export const librarySortOptions: readonly { readonly label: string; readonly value: LibrarySortKey }[] = [
   { value: "title", label: "标题" },
   { value: "artist", label: "艺术家" },
   { value: "duration", label: "时长" },
-  { value: "format", label: "格式" }
+  { value: "imported", label: "导入时间" }
 ];
 
 const matchesQuery = (track: Track, query: string): boolean => {
@@ -25,6 +22,7 @@ export const filterTracks = (tracks: readonly Track[], query: string): readonly 
 
 const compareByTitle = (left: Track, right: Track): number => left.title.localeCompare(right.title);
 
+/** 排序是纯函数；`imported` 直接保留输入顺序（曲库按 manifest 顺序排列）。 */
 export const sortTracks = (tracks: readonly Track[], key: LibrarySortKey): readonly Track[] => {
   const sorted = [...tracks];
 
@@ -35,12 +33,7 @@ export const sortTracks = (tracks: readonly Track[], key: LibrarySortKey): reado
     case "duration":
       sorted.sort((left, right) => left.durationSeconds - right.durationSeconds || compareByTitle(left, right));
       break;
-    case "format":
-      sorted.sort(
-        (left, right) =>
-          getAudioFormatLabel(left.filePath).localeCompare(getAudioFormatLabel(right.filePath)) ||
-          compareByTitle(left, right)
-      );
+    case "imported":
       break;
     case "title":
       sorted.sort(compareByTitle);

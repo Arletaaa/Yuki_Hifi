@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { defaultAppSettings, defaultScenePreset, type AppSettings, type MotionTier, type ScenePreset, type ThemeMode } from "@arlhifi/shared";
+import { defaultAppSettings, defaultScenePreset, type AppSettings, type LibrarySortKey, type MotionTier, type ScenePreset, type ThemeMode } from "@arlhifi/shared";
 
 const settingsFileName = "settings.json";
 
@@ -13,6 +13,9 @@ const isThemeMode = (value: unknown): value is ThemeMode => value === "dark" || 
 
 const isMotionTier = (value: unknown): value is MotionTier =>
   value === "off" || value === "standard" || value === "rich";
+
+const isLibrarySortKey = (value: unknown): value is LibrarySortKey =>
+  value === "title" || value === "artist" || value === "duration" || value === "imported";
 
 const readStringArray = (value: unknown): readonly string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -45,6 +48,7 @@ export const mergeSettings = (raw: unknown): AppSettings => {
         ? record.backgroundImagePath
         : null,
     favorites: readStringArray(record.favorites),
+    librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
     theme: isThemeMode(record.theme) ? record.theme : defaultAppSettings.theme,
     volume: clampInt(record.volume, 0, 100, defaultAppSettings.volume),

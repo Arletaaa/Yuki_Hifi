@@ -12,6 +12,7 @@ describe("settings merging", () => {
     const merged = mergeSettings({
       backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
+      librarySort: "duration",
       motionTier: "rich",
       theme: "light",
       volume: 55,
@@ -22,6 +23,7 @@ describe("settings merging", () => {
     expect(merged).toEqual({
       backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
+      librarySort: "duration",
       motionTier: "rich",
       scenePreset: defaultScenePreset,
       theme: "light",
@@ -32,8 +34,16 @@ describe("settings merging", () => {
   });
 
   it("clamps numeric ranges and drops unknown enums", () => {
-    const merged = mergeSettings({ theme: "neon", motionTier: "insane", volume: 400, wallpaperBlur: -5, wallpaperDim: 999 });
+    const merged = mergeSettings({
+      librarySort: "bogus",
+      motionTier: "insane",
+      theme: "neon",
+      volume: 400,
+      wallpaperBlur: -5,
+      wallpaperDim: 999
+    });
 
+    expect(merged.librarySort).toBe(defaultAppSettings.librarySort);
     expect(merged.theme).toBe(defaultAppSettings.theme);
     expect(merged.motionTier).toBe(defaultAppSettings.motionTier);
     expect(merged.volume).toBe(100);

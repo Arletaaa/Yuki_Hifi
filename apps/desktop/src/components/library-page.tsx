@@ -1,8 +1,8 @@
-﻿import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, Disc3, Loader2, RefreshCw } from "lucide-react";
-import type { Track } from "@arlhifi/shared";
+import type { LibrarySortKey, Track } from "@arlhifi/shared";
 import { Button, IconButton } from "@arlhifi/ui";
-import { filterTracks, librarySortOptions, sortTracks, type LibrarySortKey } from "../lib/library-filter";
+import { filterTracks, librarySortOptions, sortTracks } from "../lib/library-filter";
 import { EmptyState } from "./empty-state";
 import { TrackListHead, TrackRow } from "./track-row";
 

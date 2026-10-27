@@ -11,6 +11,7 @@ export const SETTINGS_STORAGE_KEY = "arlt-hifi-settings";
 export const useSaveSettings = (): void => {
   const theme = useSettingsStore((state) => state.theme);
   const motionTier = useSettingsStore((state) => state.motionTier);
+  const librarySort = useSettingsStore((state) => state.librarySort);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const hydration = useSettingsStore((state) => state.hydration);
   const volume = usePlayerStore((state) => state.volume);
@@ -30,6 +31,7 @@ export const useSaveSettings = (): void => {
     const settings: AppSettings = {
       backgroundImagePath: wallpaperPath,
       favorites,
+      librarySort,
       motionTier,
       scenePreset,
       theme,
@@ -57,5 +59,5 @@ export const useSaveSettings = (): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [favorites, hydration, motionTier, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
+  }, [favorites, hydration, librarySort, motionTier, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
 };

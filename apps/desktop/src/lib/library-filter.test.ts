@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Track } from "@arlhifi/shared";
 import { filterTracks, sortTracks } from "./library-filter";
 
@@ -60,13 +60,8 @@ describe("library sorting", () => {
     expect(sortTracks(tracks, "duration").map((track) => track.id)).toEqual(["3", "1", "4", "2"]);
   });
 
-  it("sorts by format label", () => {
-    expect(sortTracks(tracks, "format").map((track) => track.filePath.split(".").pop())).toEqual([
-      "flac",
-      "flac",
-      "mp3",
-      "wav"
-    ]);
+  it("keeps the manifest order for imported", () => {
+    expect(sortTracks(tracks, "imported").map((track) => track.id)).toEqual(["1", "2", "3", "4"]);
   });
 
   it("does not mutate the input", () => {
