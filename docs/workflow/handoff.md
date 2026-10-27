@@ -1,14 +1,14 @@
-# 交接状态（2026-10-27 收口 · 第三轮）
+# 交接状态（2026-10-27 收口 · 第四轮）
 
 ## 这一阶段的成果
 
 | 领域 | 状态 |
 | --- | --- |
-| 主界面 | 3D 画廊为唯一视图；旧 rail / player-bar / 列表页 / 队列页已不再挂载（文件仍在仓库，待第 5 刀删除） |
+| 主界面 | 3D 画廊 + 详情 + 设置浮层；旧 rail / player-bar / 列表页 / 队列页 / 播放台、壁纸与主题页**已全部删除** |
 | 顶栏 | 搜索框（标题/艺术家/专辑近似匹配）+ 结果浮层（最多 8 条，↑↓/Enter/Esc），点击飞到对应 CD |
 | 设置 | 全透明浮层（Portal 到 body，z-index 9999）；音乐库导入 + **排序** + **曲目管理** + 材质球 + 音量 + 版权 |
 | 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers`；支持排序 / 重命名 / 设封面 / 删除 |
-| 播放 | 有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数） |
+| 播放 | 有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数）；HTMLAudioElement 播放链路保留 |
 | 场景预设 | `scenePreset { table, base, wall, silhouette, light }` 已写入 `settings.json`，台面 / 台底 / 墙面**实时驱动**；`silhouette` / `light` 目前只存不用（见技术债） |
 | 持久化 | Electron 走 `settings.json`；网页预览走 `localStorage["arlt-hifi-settings"]` |
 | 素材 | 16 套 2K 材质压缩为 48 个文件（10.8MB），按 `table/ base/ wall/ leaf/` 分类；`CREDITS.md` 已登记（CC0 + CC-BY） |
@@ -16,6 +16,7 @@
 | 光效 | 丁达尔光束（6 片叠加软光条，漂移 + 呼吸）与流动光斑（150 个模糊圆斑，缓慢平移） |
 | 阴影 | 已修复：墙面接收阴影、主光角度、台面投影、接触阴影（见下文记录） |
 | 构建 | **Electron 主进程/preload 改 esbuild 打包**，修掉"应用一启动就崩"（之前 tsc 产物直接 import TS 源码） |
+| 清理 | 删掉 10 个废弃组件、壁纸体系、不可达的播放台/扇开、shell.css 与死样式；CSS 46.4 KB → 22.9 KB |
 | 门禁 | `pnpm typecheck` / `pnpm test`（101 + 11 + 6）/ `pnpm build` 全绿 |
 
 ## 阴影修复记录（第一轮）
@@ -83,7 +84,7 @@
 - 网页预览截图：音乐库区、「14 首已托管」、两个按钮；点击后出现红色提示。
 - **未验证**：真实 Electron 窗口里的文件对话框、IPC 导入、媒体协议播放。本机 Electron 创建窗口即 `0xC0000005` 崩溃（最小 `new BrowserWindow` 同样崩），属于当前 DSH 会话环境限制；需要在真实桌面会话跑 `pnpm dev` 复验。
 
-## 管理音乐 + 搜索飞行 + 音量环（本轮，刀 4）
+## 管理音乐 + 搜索飞行 + 音量环（第三轮，刀 4）
 
 ![设置浮层里的排序与曲目管理](library-manage.jpg)
 
@@ -127,29 +128,57 @@
 - 网页预览：设置浮层排序 + 管理列表 + 行内重命名 + 二次确认；搜索浮层、点击后目标 CD 居中并抽出；音量环键盘 72→82、滚轮 82→77；排序切换后画廊首张从「八月」变为「静かな星」。
 - **未验证**：Electron 窗口里的原生文件对话框、IPC 改名/换封面/删除。本机 Electron 仍无法创建窗口（`0xC0000005`），需在真实桌面会话跑 `pnpm dev` 复验。
 
+## 清理与门禁（第四轮，刀 5）
+
+### 删除
+
+- **渲染层组件**：`app-rail`、`player-bar`、`queue-page`、`library-page`、`settings-page`、`track-row`、`cover-art`、`empty-state`、`vinyl-record`、`background-scene`。
+- **壁纸体系**（ADR-006 决策 2 已把壁纸并入场景预设）：`wallpaper-store`、设置里的 `backgroundImagePath / wallpaperBlur / wallpaperDim`、`selectBackgroundImage` IPC、`createBackgroundMediaUrl` / `BackgroundImageSelectionResult`、`fixtures/themes`。
+- **场景死代码**：`Fan`（扇开）、`PlayerStage`（播放台）、`stage` / `expandedGroup` 状态与对应 DOM（展开遮罩、播放控制条）、`Disc` 的 `isFavorite` / `scale` / `spinning`、`favoriteGroupIds` 整条 prop 链、未使用的 three 导入与 `DISC_RADIUS`。
+- **其他**：`audio-controller`（seek 只有死播放栏在用）、`shell.css`（25 KB，133 个类没有一个活页面在用）、`base.css` 的 `.spin`、`scene.css` 里 17 个死类、`demo-params` 的 4 个死 helper、`HifiSignalInfo` 类型、墙面/柜体/台面只加载不使用的 normal map。
+- **顺带修复**：详情页返回按钮原来压在左上 `MUSIC COLLECTION` 上（两者都在 top-left），下移到 `top: 96px`。
+
+### 保留（有意为之）
+
+- `favorites` 仍在 store / `settings.json` 里（收藏外观与切换入口还没做），只是不再有死 prop 链。
+- `packages/ui` 的 Button / Knob 等组件当前没有调用方，但 token 样式 `@arlhifi/ui/styles.css` 仍被使用，包整体保留。
+- `shared` 的 `formatSampleRate / formatBitDepth / getQualityLabel` 等格式化函数暂时没有 UI 调用方，保留为后续信号展示的公共 API。
+- theme / motion 设置仍会写到 `<html data-theme/data-motion>`，由 `@arlhifi/ui` 的样式消费。
+
+### 验证
+
+- `pnpm typecheck`、`pnpm test`（101 + 11 + 6）、`pnpm build` 全绿；`tsc --noUnusedLocals --noUnusedParameters` 对渲染层与 electron 配置均无输出。
+- 清理后画廊仍是 64 calls / 8048 tri；详情场景 17 calls / 2768 tri；设置浮层的音乐库 / 排序 / 管理 / 材质 / 音量均正常；CSS 产物 46.4 KB → 22.9 KB。
+
 ## 未解决
 
 ### 1. 技术债
 
 - **重命名没有写标签**：只改了副本文件名和 manifest 里的 title（`music-metadata` 只读，没有引入 tag writer）。重新导入同一个源文件会带回旧标签。
 - 重命名正在播放的曲目时，`currentTrack` 仍按 id 保留旧对象（文件路径已变）；极端情况下暂停/恢复可能读不到文件。
-- 搜索行为从"输入即过滤"改成了"结果浮层 + 飞行"（按 ADR-006 决策 3）；如果还想要过滤，需要另做一个开关。
-- `stage === "expanded" | "player"` 与 `Fan` / `PlayerStage` 仍不可达（旧设计的遗留），音量环因此改成"有当前曲目就显示"。
-- 设置浮层内容变长（音乐库 + 排序 + 管理 + 材质 + 音量），小窗口下需要滚动；后续可把"管理"拆成独立面板。
+- 搜索行为是"结果浮层 + 飞行"（按 ADR-006 决策 3），不再过滤画廊；如果还想要过滤需要另做开关。
+- 设置浮层内容较长（音乐库 + 排序 + 管理 + 材质 + 音量），小窗口下需要滚动；后续可把"管理"拆成独立面板。
 - 导入在**批末**写 manifest：中途崩溃/断电会留下孤儿副本，再次导入同名文件会变成 ` (2)`；如需更强一致性，可每成功一首就落盘或先写临时清单。
 - 曲库没有「刷新/监听文件变化」：手工往 `userData/library` 放文件不会被发现；删文件只在下次 `library:load` 时剔除。
 - 导入是串行逐文件处理，没有取消；几百首的文件夹会占用 UI（有进度但没有停止按钮）。
 - 设置面板「剪影」「光效」两组材质球**没有任何代码消费**（`scenePreset.silhouette` / `.light` 只写入 `settings.json`）；要么接回场景，要么删掉这两组（连同 4 套 leaf 贴图）。
-- `gallery-stage.tsx` 已 900+ 行，混了相机、货架、CD、详情、光效、搜索飞行、音量环，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
+- `gallery-stage.tsx` 仍有 600+ 行，混了相机、货架、CD、详情、光效、搜索飞行、音量环，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
 - 详情场景的盘片自转仍缺（转动整个 `CD_1` 会让盘片侧翻，需要单独转 `Object_13` 的局部法线轴）。
-- 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；而且 demo API 存在时 `useSaveSettings` 走的是 demo 的 `saveSettings`，preview 实际不会写 localStorage。
+- 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；且 demo API 存在时 `useSaveSettings` 走 demo 的 `saveSettings`，preview 实际不写 localStorage。
 - `?merge=1` 的网格合并路径保留但默认关闭，未验证收益。
+- 收藏（favorites）没有切换入口与外观；store / 设置里的数据目前只能被动保存。
+- `electron-builder` 打包从未实际执行；本机 Electron 窗口也无法创建，窗口级验证仍待真实桌面。
+- `packages/ui` 的组件与 `shared` 的部分格式化函数暂无调用方（见"保留"）。
 
-### 2. 未开始的刀
+### 2. 后续方向
 
-| 刀 | 内容 |
-| --- | --- |
-| 5 | 删除废弃组件与样式（`app-rail`、`player-bar`、`library-page`、`queue-page`、`Fan`/`PlayerStage` 等不可达代码）、更新文档、跑门禁 |
+原始五刀已全部完成。接下来优先考虑：
+
+1. 标签写入（重命名同步 tag），需要引入 tag writer 或按格式手写。
+2. 曲库刷新/监听、导入取消与断点续传。
+3. 收藏的切换入口与金边外观（ADR-005 §6）。
+4. 键盘可达性与无 WebGL 时的降级视图。
+5. 组件级测试、Electron 打包冒烟与真机帧率验证。
 
 ## 验收命令
 
