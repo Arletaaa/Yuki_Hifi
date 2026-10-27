@@ -359,34 +359,41 @@
 }
 
 .settings-overlay__panel {
-  position: relative;
-  width: min(1080px, 92vw);
-  max-height: 90vh;
-  padding: 20px 30px 14px;
+  width: min(760px, 84vw);
+  max-height: 86vh;
   overflow: auto;
-  border: 1px solid rgba(243, 238, 230, 0.12);
-  border-radius: 20px;
-  background: rgba(9, 12, 19, 0.8);
+  padding: 26px 30px;
+  border: 1px solid rgba(243, 238, 230, 0.16);
+  border-radius: 18px;
+  background: rgba(14, 18, 26, 0.74);
   color: #f3eee6;
 }
 
+/* ---------- 设置浮层内容 ---------- */
+
+.settings-overlay__panel {
+  width: min(1180px, 94vw);
+  max-height: 92vh;
+  padding: 26px 30px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+}
+
 .settings-overlay__inner {
-  position: relative;
-  display: grid;
-  grid-template-areas:
-    "library scene"
-    "credit credit";
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
-  gap: 24px 40px;
-  align-items: start;
-  padding: 6px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: min(600px, 80vh);
+  max-height: 92vh;
+  justify-content: space-between;
+  padding: 10px 6px;
 }
 
 .settings-overlay__close {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 2;
+  top: 16px;
+  right: 18px;
   width: 26px;
   height: 26px;
   border: 1px solid rgba(243, 238, 230, 0.22);
@@ -396,76 +403,24 @@
   cursor: pointer;
 }
 
-.settings-section__head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(243, 238, 230, 0.12);
-}
-
-.settings-section__eyebrow {
-  font-size: 8.5px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: rgba(243, 238, 230, 0.3);
-}
-
-.settings-section__title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-}
-
-.settings-section__meta {
-  margin-left: auto;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: rgba(243, 238, 230, 0.4);
-}
-
-.settings-library {
-  grid-area: library;
-  display: grid;
-  gap: 16px;
-  align-content: start;
-}
-
-.settings-scene {
-  grid-area: scene;
-  display: grid;
-  gap: 16px;
-  align-content: start;
-  padding-left: 36px;
-  border-left: 1px solid rgba(243, 238, 230, 0.1);
-}
-
-.settings-scene .settings-section__head {
-  padding-right: 26px;
-}
-
-@media (max-width: 900px) {
-  .settings-overlay__inner {
-    grid-template-areas:
-      "library"
-      "scene"
-      "credit";
-    grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
-  }
-
-  .settings-scene {
-    padding-top: 22px;
-    padding-left: 0;
-    border-top: 1px solid rgba(243, 238, 230, 0.1);
-    border-left: 0;
-  }
-}
-
 .library-import {
   display: grid;
   gap: 14px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(243, 238, 230, 0.12);
+}
+
+.library-import__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.library-import__count {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(243, 238, 230, 0.42);
 }
 
 .library-import__actions {
@@ -543,8 +498,8 @@
 
 .library-manage {
   display: grid;
-  gap: 8px;
-  padding-bottom: 16px;
+  gap: 10px;
+  padding-bottom: 20px;
   border-bottom: 1px solid rgba(243, 238, 230, 0.12);
 }
 
@@ -659,68 +614,62 @@
 .preset-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 28px;
   align-items: start;
 }
 
 .preset-pair > .preset-group + .preset-group {
-  border-left: 1px solid rgba(243, 238, 230, 0.12);
-  padding-left: 18px;
+  border-left: 1px solid rgba(243, 238, 230, 0.14);
+  padding-left: 28px;
 }
 
 .preset-group {
   display: grid;
-  gap: 6px;
-  justify-items: start;
+  gap: 8px;
+  justify-items: center;
 }
 
 .preset-group__label {
   font-size: 9px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(243, 238, 230, 0.48);
+  color: rgba(243, 238, 230, 0.34);
 }
 
 .preset-group__strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 20px;
   max-width: 100%;
-  padding: 10px 2px 2px;
+  overflow: visible;
+  padding: 22px 20px;
+  margin: -10px -6px;
+  scrollbar-width: none;
 }
 
-.scene-preset {
-  display: grid;
-  gap: 18px;
-  padding: 12px 14px 4px;
-  border: 1px solid rgba(243, 238, 230, 0.08);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
+.preset-group__strip::-webkit-scrollbar {
+  display: none;
 }
 
 .preset-ball {
-  display: flex;
   flex: 0 0 auto;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
   padding: 0;
   border: 0;
+  border-radius: 50%;
   background: transparent;
   cursor: pointer;
 }
 
 .preset-ball__surface {
   display: block;
-  width: clamp(38px, 2.8vw, 44px);
-  height: clamp(38px, 2.8vw, 44px);
+  width: clamp(52px, 4.4vw, 78px);
+  height: clamp(52px, 4.4vw, 78px);
   border-radius: 50%;
   background-position: center;
   background-size: cover;
   box-shadow:
-    inset -6px -8px 14px rgba(0, 0, 0, 0.55),
-    inset 5px 6px 10px rgba(255, 255, 255, 0.14),
-    0 6px 12px rgba(0, 0, 0, 0.35);
+    inset -8px -10px 16px rgba(0, 0, 0, 0.55),
+    inset 6px 7px 12px rgba(255, 255, 255, 0.14),
+    0 8px 14px rgba(0, 0, 0, 0.35);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
@@ -735,36 +684,12 @@
   outline-offset: 5px;
 }
 
-.preset-ball__caption {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: rgba(243, 238, 230, 0.42);
-}
-
-.preset-ball.is-active .preset-ball__caption {
-  color: #f3eee6;
-}
-
-@media (max-width: 1120px) {
-  .settings-scene {
-    padding-left: 28px;
-  }
-
-  .preset-group__strip {
-    gap: 8px;
-  }
-
-  .preset-ball__surface {
-    width: 36px;
-    height: 36px;
-  }
-}
-
 .overlay-volume__row {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding-top: 16px;
+  margin-top: 28px;
+  padding-top: 18px;
   border-top: 1px solid rgba(243, 238, 230, 0.12);
 }
 
@@ -773,13 +698,6 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: rgba(243, 238, 230, 0.34);
-}
-
-.overlay-volume__value {
-  width: 22px;
-  font-size: 10px;
-  color: rgba(243, 238, 230, 0.55);
-  text-align: right;
 }
 
 .overlay-volume {
@@ -800,12 +718,9 @@
 }
 
 .settings-overlay__credit {
-  grid-area: credit;
-  margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid rgba(243, 238, 230, 0.08);
+  margin-top: auto;
+  padding-top: 18px;
   font-size: 9.5px;
   letter-spacing: 0.05em;
-  color: rgba(243, 238, 230, 0.26);
-  text-align: center;
+  color: rgba(243, 238, 230, 0.36);
 }

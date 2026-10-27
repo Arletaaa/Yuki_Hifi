@@ -2,16 +2,12 @@ import { useMemo, useState } from "react";
 import { formatDuration, type Track } from "@arlhifi/shared";
 import { useLibraryImport } from "../hooks/use-library-import";
 import { useLibraryManage } from "../hooks/use-library-manage";
-import { lightPresetOptions } from "../lib/light-presets";
 import { librarySortOptions, sortTracks } from "../lib/library-filter";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 
 interface Swatch {
   readonly base: string;
-  readonly caption?: string;
-  readonly description?: string;
-  readonly gradient?: string;
   readonly id: string;
   readonly image?: string;
 }
@@ -37,37 +33,31 @@ const WALL_SWATCHES: readonly Swatch[] = [
   { id: "woodsiding009", image: "/textures/wall/woodsiding009-color.jpg", base: "#6b6152" }
 ];
 
-const LIGHT_SWATCHES: readonly Swatch[] = lightPresetOptions.map((option) => ({
-  base: "#101420",
-  caption: option.label,
-  description: option.description,
-  gradient: option.gradient,
-  id: option.id
-}));
+const LIGHT_SWATCHES: readonly Swatch[] = [
+  { id: "morning", base: "#f0d7b4" },
+  { id: "night", base: "#7fa6c9" },
+  { id: "spot", base: "#fff4e2" }
+];
 
 interface GroupProps {
   readonly items: readonly Swatch[];
   readonly label: string;
   readonly onChange: (id: string) => void;
-  readonly showCaptions?: boolean;
   readonly value: string;
 }
 
-/** 一组材质球：超过 4 个时横向换行，材质与光效共用。 */
-const SwatchGroup = ({ items, label, onChange, showCaptions = false, value }: GroupProps) => (
+/** 一组材质球：超过 4 个时横向滚动。 */
+const SwatchGroup = ({ items, label, onChange, value }: GroupProps) => (
   <div className="preset-group">
     <p className="preset-group__label">{label}</p>
     <div className="preset-group__strip">
       {items.map((item) => (
         <button
-          aria-label={`${label}：${item.caption ?? item.id}`}
-          aria-pressed={item.id === value}
           className={`preset-ball${item.id === value ? " is-active" : ""}`}
           key={item.id}
           onClick={() => {
             onChange(item.id);
           }}
-          title={item.description}
           type="button"
         >
           <span
@@ -75,12 +65,9 @@ const SwatchGroup = ({ items, label, onChange, showCaptions = false, value }: Gr
             style={
               item.image
                 ? { backgroundImage: `url(${item.image})`, backgroundColor: item.base }
-                : { background: item.gradient ?? item.base }
+                : { backgroundColor: item.base }
             }
           />
-          {showCaptions && item.caption ? (
-            <span className="preset-ball__caption">{item.caption}</span>
-          ) : null}
         </button>
       ))}
     </div>
@@ -141,45 +128,42 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
         ✕
       </button>
 
-      <section aria-label="音乐库" className="settings-library">
-        <header className="settings-section__head">
-          <p className="settings-section__eyebrow">Library</p>
-          <h2 className="settings-section__title">音乐库</h2>
-          <span className="settings-section__meta">{library.length} 首已托管</span>
-        </header>
-
-        <div className="library-import">
-          <div className="library-import__actions">
-            <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
-              选择音频文件
-            </button>
-            <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
-              导入文件夹
-            </button>
-            {busy ? (
-              <span aria-live="polite" className="library-import__status">
-                {progressLabel}
-              </span>
-            ) : null}
-          </div>
-          {!busy && importState.message ? (
-            <p
-              className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
-              role="status"
-            >
-              {importState.message}
-            </p>
+      <section aria-label="音乐库" className="library-import">
+        <div className="library-import__head">
+          <p className="preset-group__label">音乐库</p>
+          <p className="library-import__count">{library.length} 首已托管</p>
+        </div>
+        <div className="library-import__actions">
+          <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
+            选择音频文件
+          </button>
+          <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
+            导入文件夹
+          </button>
+          {busy ? (
+            <span aria-live="polite" className="library-import__status">
+              {progressLabel}
+            </span>
           ) : null}
+        </div>
+        {!busy && importState.message ? (
+          <p
+            className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
+            role="status"
+          >
+            {importState.message}
+          </p>
+        ) : null}
 
-          <div className="library-sort">
-            <p className="preset-group__label">排序</p>
-            <div className="library-sort__options" role="group" aria-label="曲库排序">
-              {librarySortOptions.map((option) => (
-                <button
-                  aria-pressed={option.value === librarySort}
-                  className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
-                  key={option.value}
-                  onClick={() => {
+        <div className="library-sort">
+          <p className="preset-group__label">排序</p>
+          <div className="library-sort__options" role="group" aria-label="曲库排序">
+            {librarySortOptions.map((option) => (
+              <button
+                aria-pressed={option.value === librarySort}
+                className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
+                key={option.value}
+                onClick={() => {
                   setLibrarySort(option.value);
                 }}
                 type="button"
@@ -189,9 +173,9 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             ))}
           </div>
         </div>
-        </div>
+      </section>
 
-        {library.length > 0 ? (
+      {library.length > 0 ? (
         <section aria-label="曲目管理" className="library-manage">
           <div className="library-manage__head">
             <p className="preset-group__label">曲目</p>
@@ -338,43 +322,31 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
           ) : null}
         </section>
       ) : null}
-      </section>
 
-      <section aria-label="场景" className="settings-scene">
-        <header className="settings-section__head">
-          <p className="settings-section__eyebrow">Scene</p>
-          <h2 className="settings-section__title">场景</h2>
-          <span className="settings-section__meta">实时生效</span>
-        </header>
+      <div className="preset-pair">
+        <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />
+        <SwatchGroup items={BASE_SWATCHES} label="台底" onChange={(id) => { setScenePreset({ base: id }); }} value={scenePreset.base} />
+      </div>
 
-        <div className="scene-preset">
-          <div className="preset-pair">
-            <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />
-            <SwatchGroup items={BASE_SWATCHES} label="台底" onChange={(id) => { setScenePreset({ base: id }); }} value={scenePreset.base} />
-          </div>
+      <div className="preset-pair">
+        <SwatchGroup items={WALL_SWATCHES} label="墙面" onChange={(id) => { setScenePreset({ wall: id }); }} value={scenePreset.wall} />
+        <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={(id) => { setScenePreset({ light: id }); }} value={scenePreset.light} />
+      </div>
 
-          <div className="preset-pair">
-            <SwatchGroup items={WALL_SWATCHES} label="墙面" onChange={(id) => { setScenePreset({ wall: id }); }} value={scenePreset.wall} />
-            <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={(id) => { setScenePreset({ light: id }); }} showCaptions value={scenePreset.light} />
-          </div>
-        </div>
-
-        <div className="overlay-volume__row">
-          <p className="overlay-volume__label">音量</p>
-          <input
-            aria-label="音量"
-            className="overlay-volume"
-            max={100}
-            min={0}
-            onChange={(event) => {
-              setVolume(Number(event.currentTarget.value));
-            }}
-            type="range"
-            value={volume}
-          />
-          <span className="overlay-volume__value">{volume}</span>
-        </div>
-      </section>
+      <div className="overlay-volume__row">
+        <p className="overlay-volume__label">音量</p>
+        <input
+          aria-label="音量"
+          className="overlay-volume"
+          max={100}
+          min={0}
+          onChange={(event) => {
+            setVolume(Number(event.currentTarget.value));
+          }}
+          type="range"
+          value={volume}
+        />
+      </div>
 
       <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>
     </div>
