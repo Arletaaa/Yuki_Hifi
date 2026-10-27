@@ -150,15 +150,20 @@
 - `pnpm typecheck`、`pnpm test`（101 + 11 + 6）、`pnpm build` 全绿；`tsc --noUnusedLocals --noUnusedParameters` 对渲染层与 electron 配置均无输出。
 - 清理后画廊仍是 64 calls / 8048 tri；详情场景 17 calls / 2768 tri；设置浮层的音乐库 / 排序 / 管理 / 材质 / 音量均正常；CSS 产物 46.4 KB → 22.9 KB。
 
-## Windows 11 25H2 启动崩溃修复（第五轮）
+## 工作区权限导致的 Electron 启动崩溃（第五轮）
 
-- 现象：`pnpm dev` 里 Vite 正常启动，Electron 随即以 **2147483651（0x80000003，STATUS_BREAKPOINT）** 退出，无任何报错。
-- 定位：本机是 Windows 11 **25H2 / build 26200.9711**，命中已知的 Chromium GPU 沙箱问题——该 build 上沙箱 GPU 进程会 STATUS_BREAKPOINT，应用起不来；上游 workaround 是 `--disable-gpu-sandbox`（[desktop/desktop#22306](https://github.com/desktop/desktop/issues/22306)、[Chromium 577213782](https://issues.chromium.org/issues/577213782)）。
-- 修复：
-  - `electron/main.ts`：`win32` 且 build ≥ 26200 时 `app.commandLine.appendSwitch("disable-gpu-sandbox")`，覆盖 `pnpm start` / 打包产物。
-  - `scripts/dev-electron.mjs`：启动参数先带 `--disable-gpu-sandbox`；若仍在 60s 内以 0x80000003 退出，打印警告并改用 `--no-sandbox` 重试一次（仅开发脚本）。同时剥离宿主继承的 `ELECTRON_RUN_AS_NODE`，避免 Electron 被当作纯 Node 运行。
-- 验证边界：本机 DSH 会话里即使 `--no-sandbox` 也会在创建窗口时 `0xC0000005`（受限会话无法建窗），因此窗口本身仍需在普通桌面终端复验；若普通终端里 `--no-sandbox` 也起不来，则考虑升级 Electron（新 Chromium 可能已修）。
-- 会话区分：`dev-electron.mjs` 会检测 `DSH_*` 环境并提示；`0xC0000005` 基本可以判定为受限会话（DSH / 服务 / 无桌面），不是应用代码问题。普通桌面终端里如果仍复现，再按 Chromium/Electron 版本问题排查。
+- 现象：`pnpm dev` / `pnpm start` 里 Vite 正常启动，Electron 随即以 **2147483651（0x80000003，STATUS_BREAKPOINT）** 退出；加 `--no-sandbox` 后变成 **3221225477（0xC0000005）**，都发生在 app ready 之前。
+- 根因：**不是 Windows 26200 / GPU 沙箱**。`G:\MyProjects` 与项目目录带有 DSH 工作区的 Windows 权限设置（Low integrity 标签 + Everyone 删除子项 deny + `S-1-4-*` 授权）。把同一份 Electron 复制到 `G:\electron33-probe` 或 `%LOCALAPPDATA%` 就能启动，应用代码与 Windows 版本都正常；之前怀疑的 `--disable-gpu-sandbox` 无效，已移除。
+- 修复 1（dev / start）：
+  - 新增 `scripts/electron-runtime.mjs`：把 Electron 运行时复制到 `%LOCALAPPDATA%\arlt-hifi-dev\electron-<version>`，按版本缓存。
+  - `scripts/dev-electron.mjs`、`scripts/start-electron.mjs` 优先使用缓存副本；首次仍从工作区启动，60s 内以 0x80000003 退出时自动复制并重启。`start` 改为 `node scripts/start-electron.mjs`，并把额外参数转发给 Electron（如 `pnpm start -- --remote-debugging-port=9224`）。
+  - 两个脚本都会剥离宿主继承的 `ELECTRON_RUN_AS_NODE`。
+- 修复 2（生产渲染白屏）：`file://` 下 Chromium 会拦截 module script，渲染层里的 `/textures/...` 绝对路径还会落到盘根。新增 `electron/app-protocol.ts`，生产包用 `arlt-hifi-app://bundle/index.html` 把 `dist` 当站点根（带 MIME 与路径穿越保护），不再用 `loadFile`。
+- 附带：`app.setName("Arlt HiFi Player")`，让 dev / start / 打包产物统一用 `%APPDATA%\Arlt HiFi Player`（此前 dev 会落到 `%APPDATA%\Electron`）。
+- 验证：`pnpm dev` 从缓存直接启动；`pnpm start -- --remote-debugging-port=9224` 打开 `arlt-hifi-app://bundle/index.html`，canvas 正常、preload API 存在、无资源 404（控制台只剩 Electron 的开发期 CSP 警告）。
+- 注意：`%LOCALAPPDATA%\arlt-hifi-dev` 约 200MB；删掉后下次启动会重新复制。打包产物安装到正常目录后不依赖这个缓存。
+
+## 未解决
 
 ## 未解决
 
@@ -197,7 +202,8 @@ pnpm typecheck          # 三个 tsconfig 全绿
 pnpm test               # desktop 101 + shared 11 + harness 6
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
-pnpm dev                # Vite + Electron（需真实桌面会话）
+pnpm dev                # Vite + Electron（首次会按需把运行时复制到 LOCALAPPDATA）
+pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-debugging-port=9224
 ```
 
 本机环境提示（DSH 沙箱下）：
@@ -205,6 +211,7 @@ pnpm dev                # Vite + Electron（需真实桌面会话）
 - `pnpm typecheck/test/build`、`vite`、Chrome、Electron 都需要 `danger-full-access`，否则子进程 `spawn EPERM`。
 - 编辑器的原子保存会在源码目录生成 `.xxx.tmpdir` 临时目录，Vite 的 `fs.watch` 会 `EBUSY` 崩溃；用 `$env:CHOKIDAR_USEPOLLING='1'` 启动。
 - `pnpm build` 需要把 `$env:TEMP` / `$env:TMP` 指到工作区内，否则 esbuild 删除系统临时文件被沙箱拒绝。
-- DSH 环境自带 `ELECTRON_RUN_AS_NODE=1`：`dev-electron.mjs` 已在子进程环境里剥离；手动跑 Electron 时要自己 `Remove-Item Env:ELECTRON_RUN_AS_NODE`。
-- Windows 11 25H2（build 26200）需要 `--disable-gpu-sandbox`，`pnpm dev` 已自动带上并在必要时回退 `--no-sandbox`（见上文）。
-- DSH 会话内 Electron 即便 `--no-sandbox` 也会在创建窗口时 `0xC0000005`（受限会话无法建窗），窗口级验证要到普通桌面终端；headless Chrome 正常，截图脚本可临时放 `.tmp-browser/shot.mjs`（Node 内置 WebSocket 直连 CDP），用完删掉。
+- DSH 环境自带 `ELECTRON_RUN_AS_NODE=1`：`dev` / `start` 脚本已在子进程环境里剥离；手动跑 Electron 时要自己 `Remove-Item Env:ELECTRON_RUN_AS_NODE`。
+- **工作区目录不能直接启动 Electron**（DSH 的 Low integrity / deny-delete 权限会让 Chromium 以 0x80000003 崩），两个启动脚本已自动改用 `%LOCALAPPDATA%\arlt-hifi-dev\electron-<version>` 的副本；`--disable-gpu-sandbox` / `--no-sandbox` 都不是解法。
+- 生产窗口用 `arlt-hifi-app://bundle/index.html`，不要再改回 `loadFile`（module script 会被拦、绝对资源路径会失效）。
+- headless Chrome 正常；截图脚本可临时放 `.tmp-browser/shot.mjs`（Node 内置 WebSocket 直连 CDP），用完删掉。

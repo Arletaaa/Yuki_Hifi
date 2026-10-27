@@ -4,6 +4,11 @@ import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
+import {
+  getStagedElectronBinary,
+  stageElectronRuntime,
+  workspaceElectronCli
+} from "./electron-runtime.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
@@ -23,7 +28,6 @@ const run = async (command, args) => {
 };
 
 const mainEntry = join(desktopRoot, ".dev-electron", "main.js");
-const electronEntry = require.resolve("electron/cli.js");
 
 await run(process.execPath, [join(scriptDir, "build-electron.mjs"), "--dev"]);
 
@@ -48,16 +52,21 @@ if (!localUrl) {
 
 // 开发期调试入口：ARLT_DEV_QUERY="?scene=1&spin=1" pnpm dev
 const devQuery = process.env.ARLT_DEV_QUERY ?? "";
-// Windows 11 25H2（26200+）的沙箱 GPU 进程会 STATUS_BREAKPOINT 崩溃；
-// 命令行参数必须提前传，避免主进程代码还没执行就退出。
-const defaultSwitches = process.platform === "win32" ? ["--disable-gpu-sandbox"] : [];
 const electronEnv = { ...process.env, VITE_DEV_SERVER_URL: `${localUrl}${devQuery}` };
 
 // DSH/Code 类宿主会设置 ELECTRON_RUN_AS_NODE=1，继承下去 Electron 会当纯 Node 跑。
 delete electronEnv.ELECTRON_RUN_AS_NODE;
 
-const launchElectron = (switches) =>
-  spawn(process.execPath, [electronEntry, ...switches, mainEntry], {
+const launchWorkspaceElectron = () =>
+  spawn(process.execPath, [workspaceElectronCli, mainEntry], {
+    cwd: desktopRoot,
+    env: electronEnv,
+    shell: false,
+    stdio: "inherit"
+  });
+
+const launchStagedElectron = (stagedBinary) =>
+  spawn(stagedBinary, [mainEntry], {
     cwd: desktopRoot,
     env: electronEnv,
     shell: false,
@@ -65,16 +74,14 @@ const launchElectron = (switches) =>
   });
 
 const launchStarted = Date.now();
-const inDshSession = Object.keys(process.env).some((key) => key.startsWith("DSH_"));
+const cachedElectronBinary = await getStagedElectronBinary();
+let electron = cachedElectronBinary
+  ? launchStagedElectron(cachedElectronBinary)
+  : launchWorkspaceElectron();
 
-if (inDshSession) {
-  console.warn(
-    "[dev] 检测到 DSH 会话环境：Electron 无法在 DSH 的受限子进程里创建窗口，窗口级调试请从桌面打开的普通 PowerShell 运行 pnpm dev。"
-  );
+if (cachedElectronBinary) {
+  console.log("[dev] 使用 LOCALAPPDATA 中的 Electron 运行时副本（工作区目录无法直接启动）。");
 }
-
-let electron = launchElectron(defaultSwitches);
-console.log(`[dev] electron switches: ${defaultSwitches.join(" ") || "(none)"}`);
 
 const shutdown = async () => {
   if (!electron.killed) {
@@ -97,24 +104,27 @@ process.on("SIGTERM", () => {
 
 let [exitCode] = await once(electron, "exit");
 
-// Windows 11 26200+ 的 GPU 沙箱/LPAC 兼容问题：关掉 GPU 沙箱仍起不来时，
-// 用 --no-sandbox 再试一次（仅开发脚本，打包产物不会带这个参数）。
+// 工作区目录带有 DSH 的 Low integrity / deny-delete 权限时，Electron 从
+// node_modules 里启动会在 Chromium 初始化阶段崩溃（0x80000003）。
+// 把运行时复制到 LOCALAPPDATA 再启动即可；仅 Windows 需要，且首次才复制。
 if (
   process.platform === "win32" &&
   exitCode === 2147483651 &&
+  !cachedElectronBinary &&
   Date.now() - launchStarted < 60_000
 ) {
   console.warn(
-    "[dev] Electron 启动即退出（STATUS_BREAKPOINT 0x80000003），改用 --no-sandbox 重试一次。"
+    "[dev] Electron 无法从工作区目录启动（0x80000003），改为从 LOCALAPPDATA 的运行时副本启动…"
   );
-  electron = launchElectron(["--no-sandbox"]);
-  [exitCode] = await once(electron, "exit");
-}
 
-if (exitCode === 3221225477) {
-  console.error(
-    "[dev] Electron 在创建窗口时崩溃（0xC0000005）。受限会话（DSH / 服务 / 无桌面）里无法创建 Electron 窗口，请从桌面上的普通 PowerShell 运行 pnpm dev。"
-  );
+  try {
+    const stagedBinary = await stageElectronRuntime();
+    electron = launchStagedElectron(stagedBinary);
+    [exitCode] = await once(electron, "exit");
+  } catch (error) {
+    console.error(`[dev] 启动失败：${error instanceof Error ? error.message : String(error)}`);
+    exitCode = 1;
+  }
 }
 
 await server.close();

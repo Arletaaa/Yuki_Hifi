@@ -36,6 +36,10 @@ pnpm dev
 pnpm dev:web
 ```
 
+`pnpm start` 运行生产构建（`pnpm build` 之后），可附带 Electron 参数，例如 `pnpm start -- --remote-debugging-port=9224`。
+
+如果项目目录受 Windows 权限限制（例如 DSH 工作区：Low integrity / deny-delete），Electron 无法直接从工作区启动；`dev` / `start` 会自动把运行时复制到 `%LOCALAPPDATA%\arlt-hifi-dev\electron-<version>` 再启动，首次会多花几秒。
+
 网页预览使用 `?demo=1` 注入示例曲库；导入、曲库管理等主进程能力在该模式下会提示改用桌面应用。
 
 ## 质量检查

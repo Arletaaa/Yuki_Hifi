@@ -10,7 +10,7 @@
     "dev:web": "vite --host 0.0.0.0",
     "dev:electron": "node scripts/dev-electron.mjs",
     "build": "node scripts/clean.mjs && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit && node scripts/build-electron.mjs && vite build",
-    "start": "electron .",
+    "start": "node scripts/start-electron.mjs",
     "dist": "electron-builder --win portable --config electron-builder.yml",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
