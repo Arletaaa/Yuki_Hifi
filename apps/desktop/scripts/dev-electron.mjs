@@ -48,15 +48,25 @@ if (!localUrl) {
 
 // 开发期调试入口：ARLT_DEV_QUERY="?scene=1&spin=1" pnpm dev
 const devQuery = process.env.ARLT_DEV_QUERY ?? "";
-const electron = spawn(process.execPath, [electronEntry, mainEntry], {
-  cwd: desktopRoot,
-  env: {
-    ...process.env,
-    VITE_DEV_SERVER_URL: `${localUrl}${devQuery}`
-  },
-  shell: false,
-  stdio: "inherit"
-});
+// Windows 11 25H2（26200+）的沙箱 GPU 进程会 STATUS_BREAKPOINT 崩溃；
+// 命令行参数必须提前传，避免主进程代码还没执行就退出。
+const defaultSwitches = process.platform === "win32" ? ["--disable-gpu-sandbox"] : [];
+const electronEnv = { ...process.env, VITE_DEV_SERVER_URL: `${localUrl}${devQuery}` };
+
+// DSH/Code 类宿主会设置 ELECTRON_RUN_AS_NODE=1，继承下去 Electron 会当纯 Node 跑。
+delete electronEnv.ELECTRON_RUN_AS_NODE;
+
+const launchElectron = (switches) =>
+  spawn(process.execPath, [electronEntry, ...switches, mainEntry], {
+    cwd: desktopRoot,
+    env: electronEnv,
+    shell: false,
+    stdio: "inherit"
+  });
+
+const launchStarted = Date.now();
+let electron = launchElectron(defaultSwitches);
+console.log(`[dev] electron switches: ${defaultSwitches.join(" ") || "(none)"}`);
 
 const shutdown = async () => {
   if (!electron.killed) {
@@ -77,6 +87,21 @@ process.on("SIGTERM", () => {
   });
 });
 
-const [exitCode] = await once(electron, "exit");
+let [exitCode] = await once(electron, "exit");
+
+// Windows 11 26200+ 的 GPU 沙箱/LPAC 兼容问题：关掉 GPU 沙箱仍起不来时，
+// 用 --no-sandbox 再试一次（仅开发脚本，打包产物不会带这个参数）。
+if (
+  process.platform === "win32" &&
+  exitCode === 2147483651 &&
+  Date.now() - launchStarted < 60_000
+) {
+  console.warn(
+    "[dev] Electron 启动即退出（STATUS_BREAKPOINT 0x80000003），改用 --no-sandbox 重试一次。"
+  );
+  electron = launchElectron(["--no-sandbox"]);
+  [exitCode] = await once(electron, "exit");
+}
+
 await server.close();
 process.exit(typeof exitCode === "number" ? exitCode : 0);

@@ -1,4 +1,5 @@
 import electron from "electron";
+import { release as osRelease } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
@@ -17,6 +18,20 @@ import { collectAudioFilePaths } from "./music-scanner.js";
 import { mergeSettings, readSettings, writeSettings } from "./settings-store.js";
 
 const { app, BrowserWindow, dialog, ipcMain } = electron;
+
+/**
+ * Windows 11 25H2（build 26200+）上 Chromium 的沙箱 GPU 进程会以
+ * STATUS_BREAKPOINT（0x80000003）崩溃，应用起不来；上游 workaround 是
+ * 关掉 GPU 沙箱（渲染进程/utility 进程的沙箱不受影响）。
+ * 参考：https://github.com/desktop/desktop/issues/22306
+ */
+const windowsBuild =
+  process.platform === "win32" ? Number.parseInt(osRelease().split(".")[2] ?? "", 10) : Number.NaN;
+
+if (Number.isFinite(windowsBuild) && windowsBuild >= 26200) {
+  app.commandLine.appendSwitch("disable-gpu-sandbox");
+}
+
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 const selectAudioFilesChannel = "library:select-files";
