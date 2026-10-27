@@ -1,13 +1,14 @@
-# 交接状态（2026-10-27 收口 · 第二轮）
+# 交接状态（2026-10-27 收口 · 第三轮）
 
 ## 这一阶段的成果
 
 | 领域 | 状态 |
 | --- | --- |
 | 主界面 | 3D 画廊为唯一视图；旧 rail / player-bar / 列表页 / 队列页已不再挂载（文件仍在仓库，待第 5 刀删除） |
-| 顶栏 | 搜索框（近似匹配，输入即过滤） |
-| 设置 | 全透明浮层（Portal 到 body，z-index 9999）；**音乐库导入区** + 材质球两组一行、绿环只包球体、音量行、版权置底 |
-| 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers` |
+| 顶栏 | 搜索框（标题/艺术家/专辑近似匹配）+ 结果浮层（最多 8 条，↑↓/Enter/Esc），点击飞到对应 CD |
+| 设置 | 全透明浮层（Portal 到 body，z-index 9999）；音乐库导入 + **排序** + **曲目管理** + 材质球 + 音量 + 版权 |
+| 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers`；支持排序 / 重命名 / 设封面 / 删除 |
+| 播放 | 有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数） |
 | 场景预设 | `scenePreset { table, base, wall, silhouette, light }` 已写入 `settings.json`，台面 / 台底 / 墙面**实时驱动**；`silhouette` / `light` 目前只存不用（见技术债） |
 | 持久化 | Electron 走 `settings.json`；网页预览走 `localStorage["arlt-hifi-settings"]` |
 | 素材 | 16 套 2K 材质压缩为 48 个文件（10.8MB），按 `table/ base/ wall/ leaf/` 分类；`CREDITS.md` 已登记（CC0 + CC-BY） |
@@ -15,7 +16,7 @@
 | 光效 | 丁达尔光束（6 片叠加软光条，漂移 + 呼吸）与流动光斑（150 个模糊圆斑，缓慢平移） |
 | 阴影 | 已修复：墙面接收阴影、主光角度、台面投影、接触阴影（见下文记录） |
 | 构建 | **Electron 主进程/preload 改 esbuild 打包**，修掉"应用一启动就崩"（之前 tsc 产物直接 import TS 源码） |
-| 门禁 | `pnpm typecheck` / `pnpm test`（91 + 11 + 6）/ `pnpm build` 全绿 |
+| 门禁 | `pnpm typecheck` / `pnpm test`（101 + 11 + 6）/ `pnpm build` 全绿 |
 
 ## 阴影修复记录（第一轮）
 
@@ -35,7 +36,7 @@
 - 对比图：[`shadow-before.jpg`](shadow-before.jpg) → [`shadow-after.jpg`](shadow-after.jpg)。
 - 目视：CD 左后方墙面软投影、台面/柜体接触阴影、CD 底部贴地；画廊 64 calls / 8048 tri。
 
-## 音乐导入与托管（本轮，刀 3）
+## 音乐导入与托管（第二轮，刀 3）
 
 ![设置浮层中的音乐库导入区](library-import.jpg)
 
@@ -82,31 +83,79 @@
 - 网页预览截图：音乐库区、「14 首已托管」、两个按钮；点击后出现红色提示。
 - **未验证**：真实 Electron 窗口里的文件对话框、IPC 导入、媒体协议播放。本机 Electron 创建窗口即 `0xC0000005` 崩溃（最小 `new BrowserWindow` 同样崩），属于当前 DSH 会话环境限制；需要在真实桌面会话跑 `pnpm dev` 复验。
 
+## 管理音乐 + 搜索飞行 + 音量环（本轮，刀 4）
+
+![设置浮层里的排序与曲目管理](library-manage.jpg)
+
+### 排序
+
+- `AppSettings.librarySort: "title" | "artist" | "duration" | "imported"`，写进 `settings.json`，默认 `title`。
+- `sortTracks`（曲目列表）与 `groupTracksForGallery(tracks, sortKey)`（画廊槽位）共用同一套 key；`imported` 直接保留 manifest 顺序。
+- 画廊与设置里的曲目列表都会跟着排序；槽位还带 `durationSeconds`（整张专辑总时长）与 `order`（首次出现位置）。
+
+### 管理（只动副本）
+
+| 操作 | 行为 |
+| --- | --- |
+| 重命名 | `library:rename-track`：清洗标题 → 同目录改副本文件名（重名自动 ` (2)`）→ 更新 manifest 的 title/filePath；**id 保持不变**，收藏与队列不受影响 |
+| 设封面 | `library:set-track-cover`：图片复制到 `covers/override-<id hash>-<时间戳>.<ext>`，删除旧的自定义封面（标签提取的封面不动） |
+| 删除 | `library:delete-track`：删副本 + 自定义封面 + manifest 条目；渲染进程二次确认（第一次点「删除」变成「确认删除」） |
+
+- 渲染进程 `useLibraryManage` 统一处理忙碌态/错误文案，成功后重新 `loadLibrary()`；每次变更后主进程重设媒体协议白名单。
+- 设置浮层「曲目」区：默认折叠，展开后是滚动列表（标题/艺人·专辑·时长 + 重命名/封面/删除）；重命名是行内输入框（Enter 保存 / Esc 取消）。
+
+### 搜索飞行
+
+- 搜索**不再过滤画廊**：输入后在搜索框下方列出最多 8 条结果（标题 + 艺人·专辑），↑↓ 换选中项、Enter 飞、Esc 清空；点击结果同样触发。
+- 飞行 = 把目标槽位滑到正中（循环时走最短方向，不改相机）；落地后该 CD 抽出 2.2 秒（前推 0.16、旋转 0.24、缩放 1.06）。
+- 在详情/播放层级里搜索也会先回到画廊再飞行（`focusGroupId + focusNonce` 驱动）。
+- 无障碍：输入框 `role="combobox"` + `aria-expanded/aria-controls/aria-activedescendant`，列表 `role="listbox"` / `option`。
+
+![搜索飞行后目标 CD 被抽出](search-flight.jpg)
+
+### 音量环
+
+- `components/volume-ring.tsx`：270° SVG 仪表，指针拖拽（角度映射 0–100）、滚轮 ±5、方向键 ±5（Shift ±10）、Home/End。
+- `role="slider"` + `aria-valuemin/max/now/valuetext`，中心数值读数；连按用 ref 取最新值，避免同一帧内多次事件丢步。
+- 只要存在当前曲目就显示（详情场景里开始播放后也能直接调）；`stage === "player"` 目前不可达，见技术债。
+
+![播放界面的音量环](volume-ring.jpg)
+
+### 验证
+
+- 单测：`library-manage.test.ts` 8 项（改名/重名避让/非法字符清洗、封面复制与旧覆盖删除、删除副本与条目）、`album-groups.test.ts` 增加 artist/imported/时长用例、`library-filter.test.ts` 增加 imported 排序。
+- 网页预览：设置浮层排序 + 管理列表 + 行内重命名 + 二次确认；搜索浮层、点击后目标 CD 居中并抽出；音量环键盘 72→82、滚轮 82→77；排序切换后画廊首张从「八月」变为「静かな星」。
+- **未验证**：Electron 窗口里的原生文件对话框、IPC 改名/换封面/删除。本机 Electron 仍无法创建窗口（`0xC0000005`），需在真实桌面会话跑 `pnpm dev` 复验。
+
 ## 未解决
 
 ### 1. 技术债
 
+- **重命名没有写标签**：只改了副本文件名和 manifest 里的 title（`music-metadata` 只读，没有引入 tag writer）。重新导入同一个源文件会带回旧标签。
+- 重命名正在播放的曲目时，`currentTrack` 仍按 id 保留旧对象（文件路径已变）；极端情况下暂停/恢复可能读不到文件。
+- 搜索行为从"输入即过滤"改成了"结果浮层 + 飞行"（按 ADR-006 决策 3）；如果还想要过滤，需要另做一个开关。
+- `stage === "expanded" | "player"` 与 `Fan` / `PlayerStage` 仍不可达（旧设计的遗留），音量环因此改成"有当前曲目就显示"。
+- 设置浮层内容变长（音乐库 + 排序 + 管理 + 材质 + 音量），小窗口下需要滚动；后续可把"管理"拆成独立面板。
 - 导入在**批末**写 manifest：中途崩溃/断电会留下孤儿副本，再次导入同名文件会变成 ` (2)`；如需更强一致性，可每成功一首就落盘或先写临时清单。
 - 曲库没有「刷新/监听文件变化」：手工往 `userData/library` 放文件不会被发现；删文件只在下次 `library:load` 时剔除。
 - 导入是串行逐文件处理，没有取消；几百首的文件夹会占用 UI（有进度但没有停止按钮）。
 - 设置面板「剪影」「光效」两组材质球**没有任何代码消费**（`scenePreset.silhouette` / `.light` 只写入 `settings.json`）；要么接回场景，要么删掉这两组（连同 4 套 leaf 贴图）。
-- `gallery-stage.tsx` 已 800+ 行，混了相机、货架、CD、详情、光效、设置入口，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
+- `gallery-stage.tsx` 已 900+ 行，混了相机、货架、CD、详情、光效、搜索飞行、音量环，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
 - 详情场景的盘片自转仍缺（转动整个 `CD_1` 会让盘片侧翻，需要单独转 `Object_13` 的局部法线轴）。
-- 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`。
+- 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；而且 demo API 存在时 `useSaveSettings` 走的是 demo 的 `saveSettings`，preview 实际不会写 localStorage。
 - `?merge=1` 的网格合并路径保留但默认关闭，未验证收益。
 
 ### 2. 未开始的刀
 
 | 刀 | 内容 |
 | --- | --- |
-| 4 | 管理音乐（排序 / 重命名 / 设封面 / 删除）、搜索飞行到 CD、播放界面音量环 |
-| 5 | 删除废弃组件与样式（`app-rail`、`player-bar`、`library-page`、`queue-page` 等）、更新文档、跑门禁 |
+| 5 | 删除废弃组件与样式（`app-rail`、`player-bar`、`library-page`、`queue-page`、`Fan`/`PlayerStage` 等不可达代码）、更新文档、跑门禁 |
 
 ## 验收命令
 
 ```powershell
 pnpm typecheck          # 三个 tsconfig 全绿
-pnpm test               # desktop 91 + shared 11 + harness 6
+pnpm test               # desktop 101 + shared 11 + harness 6
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
 pnpm dev                # Vite + Electron（需真实桌面会话）
@@ -118,4 +167,4 @@ pnpm dev                # Vite + Electron（需真实桌面会话）
 - 编辑器的原子保存会在源码目录生成 `.xxx.tmpdir` 临时目录，Vite 的 `fs.watch` 会 `EBUSY` 崩溃；用 `$env:CHOKIDAR_USEPOLLING='1'` 启动。
 - `pnpm build` 需要把 `$env:TEMP` / `$env:TMP` 指到工作区内，否则 esbuild 删除系统临时文件被沙箱拒绝。
 - DSH 环境自带 `ELECTRON_RUN_AS_NODE=1`：启动 Electron 前必须 `Remove-Item Env:ELECTRON_RUN_AS_NODE`，否则 Electron 会当纯 Node 跑。
-- 本机 Electron 窗口创建即崩（access violation），headless Chrome 正常；截图脚本可临时放 `.tmp-browser/cdp.mjs`（CDP 直连端口），用完删掉。
+- 本机 Electron 窗口创建即崩（access violation），headless Chrome 正常；截图脚本可临时放 `.tmp-browser/shot.mjs`（Node 内置 WebSocket 直连 CDP），用完删掉。
