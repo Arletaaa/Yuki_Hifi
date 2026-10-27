@@ -65,6 +65,14 @@ const launchElectron = (switches) =>
   });
 
 const launchStarted = Date.now();
+const inDshSession = Object.keys(process.env).some((key) => key.startsWith("DSH_"));
+
+if (inDshSession) {
+  console.warn(
+    "[dev] 检测到 DSH 会话环境：Electron 无法在 DSH 的受限子进程里创建窗口，窗口级调试请从桌面打开的普通 PowerShell 运行 pnpm dev。"
+  );
+}
+
 let electron = launchElectron(defaultSwitches);
 console.log(`[dev] electron switches: ${defaultSwitches.join(" ") || "(none)"}`);
 
@@ -101,6 +109,12 @@ if (
   );
   electron = launchElectron(["--no-sandbox"]);
   [exitCode] = await once(electron, "exit");
+}
+
+if (exitCode === 3221225477) {
+  console.error(
+    "[dev] Electron 在创建窗口时崩溃（0xC0000005）。受限会话（DSH / 服务 / 无桌面）里无法创建 Electron 窗口，请从桌面上的普通 PowerShell 运行 pnpm dev。"
+  );
 }
 
 await server.close();

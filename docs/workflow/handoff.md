@@ -158,6 +158,7 @@
   - `electron/main.ts`：`win32` 且 build ≥ 26200 时 `app.commandLine.appendSwitch("disable-gpu-sandbox")`，覆盖 `pnpm start` / 打包产物。
   - `scripts/dev-electron.mjs`：启动参数先带 `--disable-gpu-sandbox`；若仍在 60s 内以 0x80000003 退出，打印警告并改用 `--no-sandbox` 重试一次（仅开发脚本）。同时剥离宿主继承的 `ELECTRON_RUN_AS_NODE`，避免 Electron 被当作纯 Node 运行。
 - 验证边界：本机 DSH 会话里即使 `--no-sandbox` 也会在创建窗口时 `0xC0000005`（受限会话无法建窗），因此窗口本身仍需在普通桌面终端复验；若普通终端里 `--no-sandbox` 也起不来，则考虑升级 Electron（新 Chromium 可能已修）。
+- 会话区分：`dev-electron.mjs` 会检测 `DSH_*` 环境并提示；`0xC0000005` 基本可以判定为受限会话（DSH / 服务 / 无桌面），不是应用代码问题。普通桌面终端里如果仍复现，再按 Chromium/Electron 版本问题排查。
 
 ## 未解决
 
