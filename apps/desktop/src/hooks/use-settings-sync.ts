@@ -8,7 +8,7 @@ const SAVE_DEBOUNCE_MS = 400;
 export const SETTINGS_STORAGE_KEY = "arlt-hifi-settings";
 
 /** 把当前偏好写回 settings.json（防抖，且加载完成前不写）。 */
-export const useSaveSettings = (musicDirectory: string | null): void => {
+export const useSaveSettings = (): void => {
   const theme = useSettingsStore((state) => state.theme);
   const motionTier = useSettingsStore((state) => state.motionTier);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
@@ -32,7 +32,6 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
       favorites,
       motionTier,
       scenePreset,
-      musicDirectory,
       theme,
       volume,
       wallpaperBlur,
@@ -58,5 +57,5 @@ export const useSaveSettings = (musicDirectory: string | null): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [favorites, hydration, motionTier, musicDirectory, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
+  }, [favorites, hydration, motionTier, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
 };

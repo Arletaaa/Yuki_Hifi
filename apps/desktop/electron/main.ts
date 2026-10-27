@@ -1,21 +1,37 @@
 import electron from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, BackgroundImageSelectionResult, DirectorySelectionResult } from "@arlhifi/shared";
+import type {
+  AppSettings,
+  AudioFileSelectionResult,
+  BackgroundImageSelectionResult,
+  FolderImportResult,
+  LibraryImportProgress,
+  LibraryImportResult,
+  Track
+} from "@arlhifi/shared";
+import { importAudioFiles } from "./library-import.js";
+import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
-import { scanMusicDirectory } from "./music-scanner.js";
+import { collectAudioFilePaths } from "./music-scanner.js";
 import { mergeSettings, readSettings, writeSettings } from "./settings-store.js";
 
 const { app, BrowserWindow, dialog, ipcMain } = electron;
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
-const selectMusicDirectoryChannel = "library:select-music-directory";
-const scanMusicDirectoryChannel = "library:scan-music-directory";
+const selectAudioFilesChannel = "library:select-files";
+const importAudioFilesChannel = "library:import-files";
+const importAudioFolderChannel = "library:import-folder";
+const loadLibraryChannel = "library:load";
+const libraryImportProgressChannel = "library:import-progress";
 const selectBackgroundImageChannel = "settings:select-background-image";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
 const mediaProtocolAccess = createMediaProtocolAccess();
 
+const audioDialogFilters: electron.FileFilter[] = [
+  { name: "音频", extensions: ["flac", "wav", "mp3", "m4a", "ogg"] }
+];
 
 registerMediaProtocolPrivileges();
 
@@ -23,34 +39,116 @@ const getActiveWindow = (): electron.BrowserWindow | null =>
   BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
 
 const getCoversDirectory = (): string => join(app.getPath("userData"), "covers");
+const getLibraryDirectory = (): string => join(app.getPath("userData"), "library");
+const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
 
-ipcMain.handle(selectMusicDirectoryChannel, async (): Promise<DirectorySelectionResult> => {
+const showDialog = async (
+  options: electron.OpenDialogOptions
+): Promise<electron.OpenDialogReturnValue> => {
   const activeWindow = getActiveWindow();
-  const options: electron.OpenDialogOptions = {
-    title: "选择音乐文件夹",
-    properties: ["openDirectory"]
-  };
-  const result = activeWindow ? await dialog.showOpenDialog(activeWindow, options) : await dialog.showOpenDialog(options);
 
-  return {
-    canceled: result.canceled,
-    directoryPath: result.filePaths[0] ?? null
-  };
-});
+  return activeWindow ? dialog.showOpenDialog(activeWindow, options) : dialog.showOpenDialog(options);
+};
 
-ipcMain.handle(scanMusicDirectoryChannel, async (_event, directoryPath: unknown) => {
-  if (typeof directoryPath !== "string" || directoryPath.trim().length === 0) {
-    throw new Error("A valid music directory path is required.");
+/** 读取托管曲库：以 manifest 为准，顺手剔除已被手工删除的文件。 */
+const loadManagedLibrary = async (): Promise<readonly Track[]> => {
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const pruned = await pruneMissingEntries(manifest.entries);
+
+  if (pruned.removed > 0) {
+    await writeLibraryManifest(manifestPath, { entries: pruned.entries, version: manifest.version });
   }
 
-  const tracks = await scanMusicDirectory(directoryPath, { coversDirectory: getCoversDirectory() });
+  const tracks = pruned.entries.map((entry) => entry.track);
+
   mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
   mediaProtocolAccess.addImageFilePaths(
     tracks.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
   );
 
   return tracks;
+};
+
+/** 复制入库并落盘 manifest；新文件立刻放行给媒体协议，不用重启。 */
+const importPaths = async (
+  event: electron.IpcMainInvokeEvent,
+  filePaths: readonly string[]
+): Promise<LibraryImportResult> => {
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = await importAudioFiles({
+    coversDirectory: getCoversDirectory(),
+    entries: manifest.entries,
+    filePaths,
+    libraryDirectory: getLibraryDirectory(),
+    onProgress: (completed, total) => {
+      if (event.sender.isDestroyed()) {
+        return;
+      }
+
+      const progress: LibraryImportProgress = { completed, total };
+
+      event.sender.send(libraryImportProgressChannel, progress);
+    }
+  });
+
+  await writeLibraryManifest(manifestPath, {
+    entries: [...manifest.entries, ...outcome.entries],
+    version: manifest.version
+  });
+
+  mediaProtocolAccess.addAudioFilePaths(outcome.imported.map((track) => track.filePath));
+  mediaProtocolAccess.addImageFilePaths(
+    outcome.imported.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
+  );
+
+  return { imported: outcome.imported, skipped: outcome.skipped };
+};
+
+ipcMain.handle(selectAudioFilesChannel, async (): Promise<AudioFileSelectionResult> => {
+  const result = await showDialog({
+    title: "选择音频文件",
+    properties: ["openFile", "multiSelections"],
+    filters: audioDialogFilters
+  });
+
+  return {
+    canceled: result.canceled,
+    filePaths: result.canceled ? [] : result.filePaths
+  };
 });
+
+ipcMain.handle(importAudioFilesChannel, async (event, rawFilePaths: unknown): Promise<LibraryImportResult> => {
+  if (
+    !Array.isArray(rawFilePaths) ||
+    rawFilePaths.length === 0 ||
+    rawFilePaths.some((filePath) => typeof filePath !== "string" || filePath.trim().length === 0)
+  ) {
+    throw new Error("至少需要一个有效的音频文件路径。");
+  }
+
+  return importPaths(event, rawFilePaths as readonly string[]);
+});
+
+ipcMain.handle(importAudioFolderChannel, async (event): Promise<FolderImportResult> => {
+  const result = await showDialog({
+    title: "选择音乐文件夹",
+    properties: ["openDirectory"]
+  });
+  const directoryPath = result.filePaths[0] ?? null;
+
+  if (result.canceled || !directoryPath) {
+    return { canceled: true, imported: [], skipped: [] };
+  }
+
+  const filePaths = await collectAudioFilePaths(directoryPath);
+  const imported = await importPaths(event, filePaths);
+
+  return { canceled: false, ...imported };
+});
+
+ipcMain.handle(loadLibraryChannel, async (): Promise<readonly Track[]> => loadManagedLibrary());
 
 ipcMain.handle(loadSettingsChannel, async (): Promise<AppSettings> => {
   const settings = await readSettings(app.getPath("userData"));
@@ -70,13 +168,11 @@ ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSe
 });
 
 ipcMain.handle(selectBackgroundImageChannel, async (): Promise<BackgroundImageSelectionResult> => {
-  const activeWindow = getActiveWindow();
-  const options: electron.OpenDialogOptions = {
+  const result = await showDialog({
     title: "选择背景图片",
     properties: ["openFile"],
     filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp"] }]
-  };
-  const result = activeWindow ? await dialog.showOpenDialog(activeWindow, options) : await dialog.showOpenDialog(options);
+  });
   const filePath = result.filePaths[0] ?? null;
 
   if (result.canceled || !filePath) {
@@ -98,7 +194,7 @@ const createWindow = async (): Promise<void> => {
     title: "Arlt HiFi Player",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: join(currentDir, "preload.js"),
+      preload: join(currentDir, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }

@@ -26,6 +26,10 @@ export const createMediaProtocolAccess = () => {
     allowAudioFilePaths: (filePaths: readonly string[]): void => {
       access.allow("audio", filePaths);
     },
+    /** 导入后累加放行：不能把还没重启的旧曲目挤掉。 */
+    addAudioFilePaths: (filePaths: readonly string[]): void => {
+      access.add("audio", filePaths);
+    },
     /** 封面与壁纸累加放行：选择壁纸不能把已放行的封面挤掉。 */
     addImageFilePaths: (filePaths: readonly string[]): void => {
       access.add("image", filePaths);

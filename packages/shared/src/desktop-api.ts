@@ -15,20 +15,50 @@ export type DesktopPlatform =
   | "cygwin"
   | "netbsd";
 
-export interface DirectorySelectionResult {
-  readonly canceled: boolean;
-  readonly directoryPath: string | null;
-}
-
 export interface BackgroundImageSelectionResult {
   readonly canceled: boolean;
   readonly filePath: string | null;
 }
 
+export interface AudioFileSelectionResult {
+  readonly canceled: boolean;
+  readonly filePaths: readonly string[];
+}
+
+/** 单首曲目没进库的原因。 */
+export type ImportSkipReason = "duplicate" | "unsupported" | "failed";
+
+export interface ImportSkippedFile {
+  readonly filePath: string;
+  readonly reason: ImportSkipReason;
+}
+
+export interface LibraryImportResult {
+  readonly imported: readonly Track[];
+  readonly skipped: readonly ImportSkippedFile[];
+}
+
+export interface FolderImportResult extends LibraryImportResult {
+  readonly canceled: boolean;
+}
+
+/** 导入进度（按已处理文件计数，包含被跳过的）。 */
+export interface LibraryImportProgress {
+  readonly completed: number;
+  readonly total: number;
+}
+
 export interface ArltHifiDesktopApi {
   readonly platform: DesktopPlatform;
-  readonly selectMusicDirectory: () => Promise<DirectorySelectionResult>;
-  readonly scanMusicDirectory: (directoryPath: string) => Promise<readonly Track[]>;
+  /** 打开系统多选文件对话框，只选不复制。 */
+  readonly selectAudioFiles: () => Promise<AudioFileSelectionResult>;
+  /** 把选中的文件复制进 userData/library 并写库。 */
+  readonly importAudioFiles: (filePaths: readonly string[]) => Promise<LibraryImportResult>;
+  /** 打开系统文件夹对话框，递归导入其中受支持的音频。 */
+  readonly importAudioFolder: () => Promise<FolderImportResult>;
+  /** 读取已托管的曲库（manifest）。 */
+  readonly loadLibrary: () => Promise<readonly Track[]>;
+  readonly onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void) => () => void;
   readonly selectBackgroundImage: () => Promise<BackgroundImageSelectionResult>;
   readonly loadSettings: () => Promise<AppSettings>;
   readonly saveSettings: (settings: AppSettings) => Promise<AppSettings>;
@@ -44,12 +74,4 @@ export const createCoverMediaUrl = (coverPath: string): string => {
 
 export const createBackgroundMediaUrl = (filePath: string): string => {
   return `${mediaProtocolScheme}://image/${encodeURIComponent(filePath)}`;
-};
-
-export const getSelectedDirectoryPath = (result: DirectorySelectionResult): string | null => {
-  if (result.canceled) {
-    return null;
-  }
-
-  return result.directoryPath;
 };

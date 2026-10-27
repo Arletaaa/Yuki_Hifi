@@ -1,4 +1,4 @@
-﻿import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
+import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { DEMO_DIRECTORY, getDemoQuery } from "./demo-params";
@@ -47,10 +47,19 @@ const demoTracks: readonly Track[] = [
   createDemoTrack(14, "夜明け前のブルース", "夜明け前のブルース", "夜明け", 312, "wav", 96000, 24)
 ];
 
+const webPreviewImportMessage = "网页预览无法导入音乐，请使用 Electron 桌面应用。";
+
+const rejectWebPreviewImport = async (): Promise<never> => {
+  throw new Error(webPreviewImportMessage);
+};
+
 const createDemoApi = (): ArltHifiDesktopApi => ({
   platform: "win32",
-  selectMusicDirectory: async () => ({ canceled: false, directoryPath: DEMO_DIRECTORY }),
-  scanMusicDirectory: async () => demoTracks,
+  selectAudioFiles: rejectWebPreviewImport,
+  importAudioFiles: rejectWebPreviewImport,
+  importAudioFolder: rejectWebPreviewImport,
+  loadLibrary: async () => demoTracks,
+  onLibraryImportProgress: () => () => {},
   selectBackgroundImage: async () => ({ canceled: true, filePath: null }),
   loadSettings: async () => ({ ...defaultAppSettings }),
   saveSettings: async (settings) => settings

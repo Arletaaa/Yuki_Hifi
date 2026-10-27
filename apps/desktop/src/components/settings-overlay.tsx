@@ -1,5 +1,6 @@
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
+import { useLibraryImport } from "../hooks/use-library-import";
 
 interface Swatch {
   readonly base: string;
@@ -80,18 +81,51 @@ export interface SettingsOverlayProps {
   readonly onClose: () => void;
 }
 
-/** 全透明设置浮层：两列材质选择 + 音量 + 置底版权。 */
+/** 全透明设置浮层：音乐库导入 + 两列材质选择 + 音量 + 置底版权。 */
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
+  const libraryCount = usePlayerStore((state) => state.library.length);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const setScenePreset = useSettingsStore((state) => state.setScenePreset);
+  const { busy, importFiles, importFolder, state: importState } = useLibraryImport();
+  const progressLabel = importState.progress
+    ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
+    : "正在导入…";
 
   return (
     <div className="settings-overlay__inner">
       <button aria-label="关闭设置" className="settings-overlay__close" onClick={onClose} type="button">
         ✕
       </button>
+
+      <section aria-label="音乐库" className="library-import">
+        <div className="library-import__head">
+          <p className="preset-group__label">音乐库</p>
+          <p className="library-import__count">{libraryCount} 首已托管</p>
+        </div>
+        <div className="library-import__actions">
+          <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
+            选择音频文件
+          </button>
+          <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
+            导入文件夹
+          </button>
+          {busy ? (
+            <span aria-live="polite" className="library-import__status">
+              {progressLabel}
+            </span>
+          ) : null}
+        </div>
+        {!busy && importState.message ? (
+          <p
+            className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
+            role="status"
+          >
+            {importState.message}
+          </p>
+        ) : null}
+      </section>
 
       <div className="preset-pair">
         <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />

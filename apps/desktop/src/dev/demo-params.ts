@@ -8,8 +8,6 @@ const isDemoRequested = (): boolean =>
 export const getDemoQuery = (): URLSearchParams | null =>
   typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
 
-export const getDemoDirectoryPath = (): string | null => (isDemoRequested() ? DEMO_DIRECTORY : null);
-
 export const getDemoInitialPage = (): PageId | null => {
   const params = getDemoQuery();
 

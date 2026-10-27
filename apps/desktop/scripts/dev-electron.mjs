@@ -23,10 +23,9 @@ const run = async (command, args) => {
 };
 
 const mainEntry = join(desktopRoot, ".dev-electron", "main.js");
-const tscEntry = require.resolve("typescript/bin/tsc");
 const electronEntry = require.resolve("electron/cli.js");
 
-await run(process.execPath, [tscEntry, "-p", "tsconfig.electron-dev.json"]);
+await run(process.execPath, [join(scriptDir, "build-electron.mjs"), "--dev"]);
 
 const server = await createServer({
   configFile: join(desktopRoot, "vite.config.ts"),

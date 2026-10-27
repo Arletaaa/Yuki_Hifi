@@ -62,7 +62,6 @@ export interface AppSettings {
   readonly backgroundImagePath: string | null;
   readonly favorites: readonly string[];
   readonly motionTier: MotionTier;
-  readonly musicDirectory: string | null;
   readonly theme: ThemeMode;
   readonly volume: number;
   readonly wallpaperBlur: number;
@@ -74,7 +73,6 @@ export const defaultAppSettings: AppSettings = {
   backgroundImagePath: null,
   favorites: [],
   motionTier: "standard",
-  musicDirectory: null,
   theme: "dark",
   volume: 72,
   wallpaperBlur: 2,

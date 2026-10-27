@@ -1,5 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { createTrackFromFilePath, extractAudio, getCoverCachePath, isSupportedAudioFile, toTrack } from "./music-scanner.js";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  collectAudioFilePaths,
+  createTrackFromFilePath,
+  extractAudio,
+  getCoverCachePath,
+  isSupportedAudioFile,
+  toTrack
+} from "./music-scanner.js";
+
+const tempDirectories: string[] = [];
+
+const createTempDirectory = async (): Promise<string> => {
+  const directory = await mkdtemp(join(tmpdir(), "arlt-hifi-scanner-"));
+  tempDirectories.push(directory);
+
+  return directory;
+};
+
+afterEach(async () => {
+  await Promise.all(tempDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
+});
 
 describe("music scanner helpers", () => {
   it("recognizes supported audio files case-insensitively", () => {
@@ -112,5 +135,31 @@ describe("cover cache paths", () => {
     expect(first.endsWith(".png")).toBe(true);
     expect(jpeg.endsWith(".jpg")).toBe(true);
     expect(first).not.toBe(jpeg);
+  });
+});
+
+describe("collecting import candidates", () => {
+  it("walks nested folders, keeps supported audio and ignores everything else", async () => {
+    const directory = await createTempDirectory();
+    const nested = join(directory, "Album", "Disc 1");
+
+    await mkdir(nested, { recursive: true });
+    await writeFile(join(directory, "root.flac"), "");
+    await writeFile(join(directory, "cover.jpg"), "");
+    await writeFile(join(directory, "notes.txt"), "");
+    await writeFile(join(nested, "nested.MP3"), "");
+    await writeFile(join(nested, "bonus.wav"), "");
+
+    await expect(collectAudioFilePaths(directory)).resolves.toEqual([
+      join(nested, "bonus.wav"),
+      join(nested, "nested.MP3"),
+      join(directory, "root.flac")
+    ]);
+  });
+
+  it("returns an empty list for a folder without audio", async () => {
+    const directory = await createTempDirectory();
+
+    await expect(collectAudioFilePaths(directory)).resolves.toEqual([]);
   });
 });

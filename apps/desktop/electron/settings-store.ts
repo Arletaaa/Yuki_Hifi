@@ -46,8 +46,6 @@ export const mergeSettings = (raw: unknown): AppSettings => {
         : null,
     favorites: readStringArray(record.favorites),
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
-    musicDirectory:
-      typeof record.musicDirectory === "string" && record.musicDirectory.length > 0 ? record.musicDirectory : null,
     theme: isThemeMode(record.theme) ? record.theme : defaultAppSettings.theme,
     volume: clampInt(record.volume, 0, 100, defaultAppSettings.volume),
     wallpaperBlur: clampInt(record.wallpaperBlur, 0, 12, defaultAppSettings.wallpaperBlur),

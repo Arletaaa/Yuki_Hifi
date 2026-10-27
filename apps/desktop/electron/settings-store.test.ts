@@ -13,7 +13,6 @@ describe("settings merging", () => {
       backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
       motionTier: "rich",
-      musicDirectory: "D:\\Music",
       theme: "light",
       volume: 55,
       wallpaperBlur: 4,
@@ -24,7 +23,6 @@ describe("settings merging", () => {
       backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
       motionTier: "rich",
-      musicDirectory: "D:\\Music",
       scenePreset: defaultScenePreset,
       theme: "light",
       volume: 55,
@@ -46,12 +44,10 @@ describe("settings merging", () => {
   it("filters non-string favorites and empty paths", () => {
     const merged = mergeSettings({
       backgroundImagePath: "",
-      favorites: ["a", 3, null, "b"],
-      musicDirectory: ""
+      favorites: ["a", 3, null, "b"]
     });
 
     expect(merged.favorites).toEqual(["a", "b"]);
     expect(merged.backgroundImagePath).toBeNull();
-    expect(merged.musicDirectory).toBeNull();
   });
 });

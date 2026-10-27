@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppSettings } from "@arlhifi/shared";
 import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
-import { getDemoDirectoryPath } from "./dev/demo-params";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
 import { useSaveSettings } from "./hooks/use-settings-sync";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
@@ -11,9 +10,6 @@ import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useSettingsStore } from "./store/settings-store";
 import { useWallpaperStore } from "./store/wallpaper-store";
-
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
 
 /** 近似匹配：忽略大小写与空白，子串命中即可。 */
 const matchesQuery = (values: readonly string[], query: string): boolean => {
@@ -32,8 +28,6 @@ export const App = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(() => new URLSearchParams(window.location.search).get("settings") === "1");
   const [searchQuery, setSearchQuery] = useState("");
-  const [directoryPath, setDirectoryPath] = useState<string | null>(() => getDemoDirectoryPath());
-  const [scanErrorMessage, setScanErrorMessage] = useState<string | null>(null);
 
   const library = usePlayerStore((state) => state.library);
   const favorites = usePlayerStore((state) => state.favorites);
@@ -67,9 +61,7 @@ export const App = () => {
       .map((group) => group.id);
   }, [favorites, galleryGroups]);
 
-  const scanDirectoryRef = useRef<(path: string) => Promise<void>>(async () => {});
-
-  useSaveSettings(directoryPath);
+  useSaveSettings();
 
   useEffect(() => {
     const api = window.arltHifiDesktop;
@@ -102,40 +94,19 @@ export const App = () => {
       hydrateSettings(settings);
       hydrateWallpaper(settings);
       usePlayerStore.setState({ volume: settings.volume, favorites: settings.favorites });
+    });
 
-      if (settings.musicDirectory) {
-        setDirectoryPath(settings.musicDirectory);
-        void scanDirectoryRef.current(settings.musicDirectory);
+    // 曲库以主进程的库清单为准：导入过的文件都在 userData/library 下。
+    void api.loadLibrary().then((tracks) => {
+      if (!cancelled) {
+        loadLibrary(tracks);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [hydrateSettings, hydrateWallpaper]);
-
-  const scanDirectory = async (nextDirectoryPath: string): Promise<void> => {
-    const api = window.arltHifiDesktop;
-
-    if (!api) {
-      setScanErrorMessage("当前环境不支持扫描本地文件夹，请在 Electron 桌面应用中使用。");
-      return;
-    }
-
-    setScanErrorMessage(null);
-
-    try {
-      const tracks = await api.scanMusicDirectory(nextDirectoryPath);
-      loadLibrary(tracks);
-    } catch (error) {
-      loadLibrary([]);
-      setScanErrorMessage(getErrorMessage(error, "扫描音乐文件夹失败。"));
-    }
-  };
-
-  useEffect(() => {
-    scanDirectoryRef.current = scanDirectory;
-  });
+  }, [hydrateSettings, hydrateWallpaper, loadLibrary]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -191,7 +162,6 @@ export const App = () => {
         >
           ⚙
         </button>
-      {scanErrorMessage ? <p className="gallery-error">{scanErrorMessage}</p> : null}
 
       {settingsOpen ? createPortal((
         <div

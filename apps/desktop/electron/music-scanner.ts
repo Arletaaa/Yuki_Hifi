@@ -1,4 +1,4 @@
-﻿import { createHash } from "node:crypto";
+import { createHash } from "node:crypto";
 import { access, mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { parseFile } from "music-metadata";
@@ -53,6 +53,49 @@ export const extractAudio = (metadata: AudioMetadataLike): ParsedAudio => {
   };
 };
 
+/** 读取单个文件的标签；标签损坏或不可读时返回 null，由调用方退回文件名。 */
+export const parseAudioFile = async (filePath: string): Promise<ParsedAudio | null> => {
+  try {
+    return extractAudio(await parseFile(filePath, { duration: true }));
+  } catch {
+    return null;
+  }
+};
+
+/** 支持格式的音频文件：递归收集，结果稳定排序。 */
+export const collectAudioFilePaths = async (directoryPath: string): Promise<readonly string[]> => {
+  const audioFilePaths: string[] = [];
+
+  const walk = async (currentDirectoryPath: string): Promise<void> => {
+    let entries;
+
+    try {
+      entries = await readdir(currentDirectoryPath, { withFileTypes: true });
+    } catch {
+      // 没有权限的子目录直接跳过，不阻断整次导入。
+      return;
+    }
+
+    for (const entry of entries) {
+      const entryPath = join(currentDirectoryPath, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+
+      if (entry.isFile() && isSupportedAudioFile(entryPath)) {
+        audioFilePaths.push(entryPath);
+      }
+    }
+  };
+
+  await walk(directoryPath);
+
+  // 不依赖系统区域设置：同一批导入的顺序必须稳定。
+  return audioFilePaths.sort();
+};
+
 const resolveQuality = (filePath: string, sampleRateHz: number, bitDepth: number): AudioQuality => {
   const base = getAudioQuality(filePath);
 
@@ -65,7 +108,8 @@ const resolveQuality = (filePath: string, sampleRateHz: number, bitDepth: number
 
 /** 文件名兜底曲目：读不到标签时使用。 */
 export const createTrackFromFilePath = (filePath: string): Track => {
-  const extension = extname(filePath).toLowerCase();
+  // 扩展名统一小写用于格式判断，但剥标题时必须用原始大小写。
+  const extension = extname(filePath);
   const title = basename(filePath, extension).trim() || "Untitled";
 
   return {
@@ -138,7 +182,8 @@ const fileExists = async (filePath: string): Promise<boolean> => {
   }
 };
 
-const writeCover = async (
+/** 把内嵌封面写到缓存目录，返回封面路径；没有封面返回 null。 */
+export const cacheCover = async (
   coversDirectory: string | null,
   filePath: string,
   picture: ParsedAudio["picture"]
@@ -155,71 +200,4 @@ const writeCover = async (
   }
 
   return coverPath;
-};
-
-const readTrack = async (filePath: string, coversDirectory: string | null): Promise<Track> => {
-  try {
-    const metadata = await parseFile(filePath, { duration: true });
-    const parsed = extractAudio(metadata);
-    const coverPath = await writeCover(coversDirectory, filePath, parsed.picture);
-
-    return toTrack(filePath, parsed, coverPath);
-  } catch {
-    // 标签损坏或不可读：退回文件名，不阻断整次扫描。
-    return toTrack(filePath, null, null);
-  }
-};
-
-export interface ScanOptions {
-  readonly concurrency?: number;
-  readonly coversDirectory?: string | null;
-}
-
-export const scanMusicDirectory = async (
-  directoryPath: string,
-  options: ScanOptions = {}
-): Promise<readonly Track[]> => {
-  const audioFilePaths: string[] = [];
-
-  const walk = async (currentDirectoryPath: string): Promise<void> => {
-    const entries = await readdir(currentDirectoryPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const entryPath = join(currentDirectoryPath, entry.name);
-
-      if (entry.isDirectory()) {
-        await walk(entryPath);
-        continue;
-      }
-
-      if (entry.isFile() && isSupportedAudioFile(entryPath)) {
-        audioFilePaths.push(entryPath);
-      }
-    }
-  };
-
-  await walk(directoryPath);
-
-  const coversDirectory = options.coversDirectory ?? null;
-  const concurrency = Math.max(1, Math.min(options.concurrency ?? 8, 16));
-  const tracks: Track[] = [];
-  let cursor = 0;
-
-  const worker = async (): Promise<void> => {
-    while (cursor < audioFilePaths.length) {
-      const index = cursor;
-      cursor += 1;
-      const filePath = audioFilePaths[index];
-
-      if (!filePath) {
-        continue;
-      }
-
-      tracks.push(await readTrack(filePath, coversDirectory));
-    }
-  };
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, audioFilePaths.length) }, worker));
-
-  return tracks.sort((left, right) => left.title.localeCompare(right.title));
 };

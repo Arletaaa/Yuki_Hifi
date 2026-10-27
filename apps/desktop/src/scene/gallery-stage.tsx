@@ -790,7 +790,7 @@ export const GalleryExperience = ({
           <div className="gallery-caption">
             <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
             <p className="gallery-caption__hint">
-              {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "用光盘，收藏每一段值得回味的声音。")}
+              {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
             </p>
           </div>
 
