@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBackgroundMediaUrl, createTrackMediaUrl } from "./desktop-api.js";
+import { createCoverMediaUrl, createTrackMediaUrl } from "./desktop-api.js";
 
 describe("desktop api helpers", () => {
   it("creates a media URL without exposing file protocol URLs", () => {
@@ -21,10 +21,10 @@ describe("desktop api helpers", () => {
     expect(url).not.toContain("file://");
   });
 
-  it("creates background image URLs on the image host", () => {
-    const url = createBackgroundMediaUrl("D:\\Pictures\\night sky.webp");
+  it("creates cover image URLs on the image host", () => {
+    const url = createCoverMediaUrl("D:\\Covers\\night sky.webp");
 
     expect(url).toMatch(/^arlt-hifi-media:\/\/image\//);
-    expect(url).toContain(encodeURIComponent("D:\\Pictures\\night sky.webp"));
+    expect(url).toContain(encodeURIComponent("D:\\Covers\\night sky.webp"));
   });
 });

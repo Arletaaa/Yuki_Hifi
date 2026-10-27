@@ -20,14 +20,14 @@ Arlt HiFi Player — local HiFi desktop music player built on Electron + React +
 
 ```
 apps/desktop/          Electron + React desktop app
-  electron/              Main process (preload, media protocol, music scanner)
+  electron/              Main process (preload, media protocol, library import/manifest, settings)
   src/                   Renderer (React components, hooks, stores)
   src/scene/             (S2R) three.js + react-three-fiber collection scene
 packages/shared/       Shared types, mock data, utilities
-packages/ui/           Base UI components (Button, IconButton, Knob, Panel, SegmentedControl, cn)
+packages/ui/           Design tokens + base UI components
 packages/agent-harness/  AI harness: constraints, checklists, task templates
 docs/                  Product docs, ADRs, prompts, evals
-fixtures/              Test fixture placeholders (audio, themes, visuals)
+fixtures/              Test fixture placeholders (audio, visuals)
 ```
 
 ## Key Patterns
@@ -35,10 +35,10 @@ fixtures/              Test fixture placeholders (audio, themes, visuals)
 - **State**: Zustand store in `apps/desktop/src/store/player-store.ts` manages `library`, `queue`, `currentTrack`, `status`, `positionSeconds`, `volume`.
 - **Playback MVP**: `HTMLAudioElement` via `useAudioPlayback` hook. Do NOT introduce Rust audio-core yet.
 - **Security boundary**: React renderer uses Electron preload API (contextBridge). Never access Node/Electron APIs directly from renderer.
-- **Audio files**: `flac`, `wav`, `mp3`, `m4a`, `ogg` scanned via main process `music-scanner.ts`.
+- **Audio files**: `flac`, `wav`, `mp3`, `m4a`, `ogg` imported into `userData/library` by `library-import.ts`; the manifest `userData/library.json` is the single source of truth.
 - **Styles**: design tokens in `packages/ui/src/styles.css`, layout in `apps/desktop/src/styles/`. Tailwind is still installed for preflight/utilities, but new UI uses semantic classes + tokens.
 - **Testing**: Vitest in a node environment; tests colocated with source (`*.test.ts`/`*.test.tsx`). Component-level render tests are not set up yet.
-- **Scene (S2R)**: three.js + react-three-fiber, lazy-loaded, cover textures only via `arlt-hifi-media://image/...`. The 3D gallery is the library's primary view; the list view remains as the accessible/fallback path.
+- **Scene (S2R)**: three.js + react-three-fiber, lazy-loaded, cover textures only via `arlt-hifi-media://image/...`. The 3D gallery is the only library view; the old list/queue pages and player bar were removed.
 
 ## Hard Constraints
 

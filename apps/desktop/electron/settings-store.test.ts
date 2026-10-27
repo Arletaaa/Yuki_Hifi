@@ -10,26 +10,20 @@ describe("settings merging", () => {
 
   it("keeps valid values", () => {
     const merged = mergeSettings({
-      backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
       theme: "light",
-      volume: 55,
-      wallpaperBlur: 4,
-      wallpaperDim: 20
+      volume: 55
     });
 
     expect(merged).toEqual({
-      backgroundImagePath: "D:\\Pictures\\sky.png",
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
       scenePreset: defaultScenePreset,
       theme: "light",
-      volume: 55,
-      wallpaperBlur: 4,
-      wallpaperDim: 20
+      volume: 55
     });
   });
 
@@ -38,26 +32,18 @@ describe("settings merging", () => {
       librarySort: "bogus",
       motionTier: "insane",
       theme: "neon",
-      volume: 400,
-      wallpaperBlur: -5,
-      wallpaperDim: 999
+      volume: 400
     });
 
     expect(merged.librarySort).toBe(defaultAppSettings.librarySort);
     expect(merged.theme).toBe(defaultAppSettings.theme);
     expect(merged.motionTier).toBe(defaultAppSettings.motionTier);
     expect(merged.volume).toBe(100);
-    expect(merged.wallpaperBlur).toBe(0);
-    expect(merged.wallpaperDim).toBe(60);
   });
 
-  it("filters non-string favorites and empty paths", () => {
-    const merged = mergeSettings({
-      backgroundImagePath: "",
-      favorites: ["a", 3, null, "b"]
-    });
+  it("filters non-string favorites", () => {
+    const merged = mergeSettings({ favorites: ["a", 3, null, "b"] });
 
     expect(merged.favorites).toEqual(["a", "b"]);
-    expect(merged.backgroundImagePath).toBeNull();
   });
 });

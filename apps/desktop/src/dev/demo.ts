@@ -68,7 +68,6 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   setTrackCover: rejectWebPreviewManage,
   deleteTrack: rejectWebPreviewManage,
   onLibraryImportProgress: () => () => {},
-  selectBackgroundImage: async () => ({ canceled: true, filePath: null }),
   loadSettings: async () => ({ ...defaultAppSettings }),
   saveSettings: async (settings) => settings
 });

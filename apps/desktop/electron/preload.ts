@@ -3,7 +3,6 @@ import type {
   AppSettings,
   ArltHifiDesktopApi,
   AudioFileSelectionResult,
-  BackgroundImageSelectionResult,
   FolderImportResult,
   LibraryImportProgress,
   LibraryImportResult,
@@ -19,7 +18,6 @@ const renameTrackChannel = "library:rename-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const libraryImportProgressChannel = "library:import-progress";
-const selectBackgroundImageChannel = "settings:select-background-image";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
 
@@ -56,9 +54,6 @@ const desktopApi: ArltHifiDesktopApi = {
     return () => {
       ipcRenderer.removeListener(libraryImportProgressChannel, listener);
     };
-  },
-  selectBackgroundImage: async (): Promise<BackgroundImageSelectionResult> => {
-    return ipcRenderer.invoke(selectBackgroundImageChannel) as Promise<BackgroundImageSelectionResult>;
   },
   loadSettings: async (): Promise<AppSettings> => {
     return ipcRenderer.invoke(loadSettingsChannel) as Promise<AppSettings>;

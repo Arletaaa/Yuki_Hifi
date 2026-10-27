@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import type { AppSettings } from "@arlhifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
-import { useWallpaperStore } from "../store/wallpaper-store";
 
 const SAVE_DEBOUNCE_MS = 400;
 export const SETTINGS_STORAGE_KEY = "arlt-hifi-settings";
@@ -16,9 +15,6 @@ export const useSaveSettings = (): void => {
   const hydration = useSettingsStore((state) => state.hydration);
   const volume = usePlayerStore((state) => state.volume);
   const favorites = usePlayerStore((state) => state.favorites);
-  const wallpaperPath = useWallpaperStore((state) => state.path);
-  const wallpaperDim = useWallpaperStore((state) => state.dim);
-  const wallpaperBlur = useWallpaperStore((state) => state.blur);
   const lastSaved = useRef<string | null>(null);
 
   useEffect(() => {
@@ -29,15 +25,12 @@ export const useSaveSettings = (): void => {
     const api = window.arltHifiDesktop;
 
     const settings: AppSettings = {
-      backgroundImagePath: wallpaperPath,
       favorites,
       librarySort,
       motionTier,
       scenePreset,
       theme,
-      volume,
-      wallpaperBlur,
-      wallpaperDim
+      volume
     };
     const serialized = JSON.stringify(settings);
 
@@ -59,5 +52,5 @@ export const useSaveSettings = (): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [favorites, hydration, librarySort, motionTier, scenePreset, theme, volume, wallpaperBlur, wallpaperDim, wallpaperPath]);
+  }, [favorites, hydration, librarySort, motionTier, scenePreset, theme, volume]);
 };

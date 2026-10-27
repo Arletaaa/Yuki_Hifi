@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@arlhifi/ui/styles.css";
 import "./styles/base.css";
-import "./styles/shell.css";
 import "./styles/scene.css";
 import { App } from "./App";
 

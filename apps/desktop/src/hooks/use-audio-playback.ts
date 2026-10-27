@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createTrackMediaUrl } from "@arlhifi/shared";
 import { getAudioPlaybackErrorMessage } from "./audio-playback";
-import { setAudioController } from "./audio-controller";
 import { usePlayerStore } from "../store/player-store";
 
 export const useAudioPlayback = (): void => {
@@ -51,17 +50,7 @@ export const useAudioPlayback = (): void => {
     audio.addEventListener("error", handleError);
     audio.addEventListener("pause", handlePause);
 
-    setAudioController({
-      seek: (seconds) => {
-        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-        const target = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
-        audio.currentTime = target;
-        setPositionSeconds(target);
-      }
-    });
-
     return () => {
-      setAudioController(null);
       audio.pause();
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);

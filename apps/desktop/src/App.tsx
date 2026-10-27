@@ -10,7 +10,6 @@ import { filterTracks } from "./lib/library-filter";
 import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useSettingsStore } from "./store/settings-store";
-import { useWallpaperStore } from "./store/wallpaper-store";
 
 const MAX_SEARCH_RESULTS = 8;
 
@@ -24,19 +23,11 @@ export const App = () => {
   const [focusRequest, setFocusRequest] = useState<{ groupId: string; nonce: number } | null>(null);
 
   const library = usePlayerStore((state) => state.library);
-  const favorites = usePlayerStore((state) => state.favorites);
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id ?? null);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const playTrack = usePlayerStore((state) => state.playTrack);
-  const playbackStatus = usePlayerStore((state) => state.status);
-  const positionSeconds = usePlayerStore((state) => state.positionSeconds);
-  const durationSeconds = usePlayerStore((state) => state.durationSeconds);
-  const togglePlayback = usePlayerStore((state) => state.togglePlayback);
-  const playNext = usePlayerStore((state) => state.playNext);
-  const playPrevious = usePlayerStore((state) => state.playPrevious);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const librarySort = useSettingsStore((state) => state.librarySort);
-  const hydrateWallpaper = useWallpaperStore((state) => state.hydrate);
 
   const searchResults = useMemo(() => {
     if (searchQuery.trim().length === 0) {
@@ -47,14 +38,6 @@ export const App = () => {
   }, [library, searchQuery]);
 
   const galleryGroups = useMemo(() => groupTracksForGallery(library, librarySort), [library, librarySort]);
-
-  const favoriteGroupIds = useMemo(() => {
-    const favoriteSet = new Set(favorites);
-
-    return galleryGroups
-      .filter((group) => group.trackIds.some((trackId) => favoriteSet.has(trackId)))
-      .map((group) => group.id);
-  }, [favorites, galleryGroups]);
 
   useSaveSettings();
 
@@ -69,7 +52,6 @@ export const App = () => {
         try {
           const parsed = JSON.parse(stored) as AppSettings;
           hydrateSettings(parsed);
-          hydrateWallpaper(parsed);
           usePlayerStore.setState({ volume: parsed.volume, favorites: parsed.favorites });
         } catch {
           // 解析失败就保持默认值。
@@ -87,7 +69,6 @@ export const App = () => {
       }
 
       hydrateSettings(settings);
-      hydrateWallpaper(settings);
       usePlayerStore.setState({ volume: settings.volume, favorites: settings.favorites });
     });
 
@@ -101,7 +82,7 @@ export const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [hydrateSettings, hydrateWallpaper, loadLibrary]);
+  }, [hydrateSettings, loadLibrary]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -165,17 +146,10 @@ export const App = () => {
     <div className="app app--gallery">
       <SceneStage
         currentTrackId={currentTrackId}
-        durationSeconds={durationSeconds}
-        favoriteGroupIds={favoriteGroupIds}
         focusGroupId={focusRequest?.groupId ?? null}
         focusNonce={focusRequest?.nonce ?? 0}
         groups={galleryGroups}
-        onNext={playNext}
         onPlayTrack={playTrack}
-        onPrev={playPrevious}
-        onToggle={togglePlayback}
-        playing={playbackStatus === "playing"}
-        positionSeconds={positionSeconds}
         tracks={library}
       />
 

@@ -43,17 +43,11 @@ export const mergeSettings = (raw: unknown): AppSettings => {
   const record = raw as Record<string, unknown>;
 
   return {
-    backgroundImagePath:
-      typeof record.backgroundImagePath === "string" && record.backgroundImagePath.length > 0
-        ? record.backgroundImagePath
-        : null,
     favorites: readStringArray(record.favorites),
     librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
     theme: isThemeMode(record.theme) ? record.theme : defaultAppSettings.theme,
     volume: clampInt(record.volume, 0, 100, defaultAppSettings.volume),
-    wallpaperBlur: clampInt(record.wallpaperBlur, 0, 12, defaultAppSettings.wallpaperBlur),
-    wallpaperDim: clampInt(record.wallpaperDim, 0, 60, defaultAppSettings.wallpaperDim),
     scenePreset: readPreset(record.scenePreset)
   };
 };

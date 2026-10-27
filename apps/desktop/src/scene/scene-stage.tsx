@@ -10,33 +10,19 @@ const GalleryExperience = lazy(() =>
 
 export interface SceneStageProps {
   readonly currentTrackId: string | null;
-  readonly durationSeconds: number;
-  readonly favoriteGroupIds: readonly string[];
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
-  readonly onNext: () => void;
   readonly onPlayTrack: (track: Track) => void;
-  readonly onPrev: () => void;
-  readonly onToggle: () => void;
-  readonly playing: boolean;
-  readonly positionSeconds: number;
   readonly tracks: readonly Track[];
 }
 
 export const SceneStage = ({
   currentTrackId,
-  durationSeconds,
-  favoriteGroupIds,
   focusGroupId,
   focusNonce,
   groups,
-  onNext,
   onPlayTrack,
-  onPrev,
-  onToggle,
-  playing,
-  positionSeconds,
   tracks
 }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
@@ -52,24 +38,17 @@ export const SceneStage = ({
           <Suspense fallback={null}>
             <GalleryExperience
               currentTrackId={currentTrackId}
-              durationSeconds={durationSeconds}
-              favoriteGroupIds={favoriteGroupIds}
               focusGroupId={focusGroupId}
               focusNonce={focusNonce}
               groups={groups}
-              onNext={onNext}
               onPlayTrack={onPlayTrack}
-              onPrev={onPrev}
-              onToggle={onToggle}
-              playing={playing}
-              positionSeconds={positionSeconds}
               tracks={tracks}
             />
           </Suspense>
         ) : (
           <div className="scene-stage__fallback">
             <h1 className="scene-stage__fallback-title">无法启用 3D 场景</h1>
-            <p className="scene-stage__fallback-copy">当前环境不支持 WebGL2，已退回列表视图，功能不受影响。</p>
+            <p className="scene-stage__fallback-copy">当前环境不支持 WebGL2，无法显示 3D 画廊。</p>
           </div>
         )}
       </div>

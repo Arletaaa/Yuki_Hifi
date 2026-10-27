@@ -62,33 +62,19 @@ export const defaultScenePreset: ScenePreset = {
 };
 
 export interface AppSettings {
-  readonly backgroundImagePath: string | null;
   readonly favorites: readonly string[];
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly theme: ThemeMode;
   readonly volume: number;
-  readonly wallpaperBlur: number;
-  readonly wallpaperDim: number;
   readonly scenePreset: ScenePreset;
 }
 
 export const defaultAppSettings: AppSettings = {
-  backgroundImagePath: null,
   favorites: [],
   librarySort: "title",
   motionTier: "standard",
   theme: "dark",
   volume: 72,
-  wallpaperBlur: 2,
-  wallpaperDim: 34,
   scenePreset: defaultScenePreset
 };
-
-export interface HifiSignalInfo {
-  readonly codec: string;
-  readonly sampleRateHz: number;
-  readonly bitDepth: number;
-  readonly outputDevice: string;
-  readonly exclusiveMode: boolean;
-}

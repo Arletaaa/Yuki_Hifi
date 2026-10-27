@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import type {
   AppSettings,
   AudioFileSelectionResult,
-  BackgroundImageSelectionResult,
   FolderImportResult,
   LibraryImportProgress,
   LibraryImportResult,
@@ -28,7 +27,6 @@ const renameTrackChannel = "library:rename-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const libraryImportProgressChannel = "library:import-progress";
-const selectBackgroundImageChannel = "settings:select-background-image";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
 const mediaProtocolAccess = createMediaProtocolAccess();
@@ -250,13 +248,7 @@ ipcMain.handle(deleteTrackChannel, async (_event, rawTrackId: unknown): Promise<
 });
 
 ipcMain.handle(loadSettingsChannel, async (): Promise<AppSettings> => {
-  const settings = await readSettings(app.getPath("userData"));
-
-  if (settings.backgroundImagePath) {
-    mediaProtocolAccess.addImageFilePaths([settings.backgroundImagePath]);
-  }
-
-  return settings;
+  return readSettings(app.getPath("userData"));
 });
 
 ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSettings> => {
@@ -264,23 +256,6 @@ ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSe
   await writeSettings(app.getPath("userData"), settings);
 
   return settings;
-});
-
-ipcMain.handle(selectBackgroundImageChannel, async (): Promise<BackgroundImageSelectionResult> => {
-  const result = await showDialog({
-    title: "选择背景图片",
-    properties: ["openFile"],
-    filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "webp"] }]
-  });
-  const filePath = result.filePaths[0] ?? null;
-
-  if (result.canceled || !filePath) {
-    return { canceled: true, filePath: null };
-  }
-
-  mediaProtocolAccess.addImageFilePaths([filePath]);
-
-  return { canceled: false, filePath };
 });
 
 const createWindow = async (): Promise<void> => {

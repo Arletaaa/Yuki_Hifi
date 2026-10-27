@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box3, Color, DoubleSide, Group, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MultiplyBlending, PlaneGeometry, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader, Vector3 } from "three";
+import { Group, MathUtils, Mesh, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
@@ -38,7 +38,6 @@ const ProceduralEnvironment = () => {
 };
 
 const GAP = 0.80;
-const DISC_RADIUS = 0.26;
 const BASE_Y = 1.30;
 const CAMERA_POSITION: readonly [number, number, number] = [0, 1.78, 3.95];
 const LOOK_AT: readonly [number, number, number] = [0, 1.30, 0];
@@ -52,8 +51,6 @@ const VISIBLE = 7;
 /** 台面顶面（BASE_Y - 0.26）上方 1.5mm：接触阴影贴片的位置。 */
 const CONTACT_SHADOW_Y = -0.2585;
 
-type Stage = "gallery" | "expanded" | "player";
-
 /* ---------- 单张 CD ---------- */
 
 interface DiscProps {
@@ -61,21 +58,11 @@ interface DiscProps {
   readonly highlighted?: boolean;
   readonly id: string;
   readonly isCurrent: boolean;
-  readonly isFavorite: boolean;
   readonly onPointerOverAction?: () => void;
   readonly onSelect: () => void;
   readonly position: readonly [number, number, number];
   readonly rotationY: number;
-  readonly scale: number;
-  readonly spinning?: boolean;
 }
-
-/** 封面（内页）。 */
-const COVER_NODE = "Object_11";
-/** 托盘上那层印着 CD 图形的纸，会挡住封面。 */
-const CD_PRINT_NODES = new Set(["Object_8"]);
-/** 盘片本体：陈列时隐藏，点击后再出现。 */
-const DISC_NODES = new Set(["Object_13", "Object_14"]);
 
 /** 透明宝石盒（Sketchfab "CD Jewel Case"，作者 蓝人组合，CC-BY 4.0）。 */
 const CaseModel = ({ coverTexture, tint }: { readonly coverTexture: Texture | null; readonly tint: string }) => {
@@ -90,21 +77,17 @@ const Disc = ({
   highlighted = false,
   id,
   isCurrent,
-  isFavorite,
   onPointerOverAction,
   onSelect,
   position,
-  rotationY,
-  scale,
-  spinning = false
+  rotationY
 }: DiscProps) => {
   const texture = useCoverTexture(coverPath);
-  const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const groupRef = useRef<Mesh>(null);
   const tint = tintOf(id);
 
-  useFrame((state, delta) => {
+  useFrame((_frame, delta) => {
     const group = groupRef.current;
 
     if (!group) {
@@ -117,10 +100,6 @@ const Disc = ({
     group.position.z = MathUtils.lerp(group.position.z, highlighted ? 0.16 : hovered ? 0.07 : 0, damping);
     group.rotation.y = MathUtils.lerp(group.rotation.y, highlighted ? 0.24 : hovered ? 0.18 : 0, damping);
     group.scale.setScalar(MathUtils.lerp(group.scale.x, highlighted ? 1.06 : 1, damping));
-
-    if (spinning && meshRef.current) {
-      meshRef.current.rotation.z = state.clock.elapsedTime * -0.35;
-    }
   });
 
   return (
@@ -160,35 +139,21 @@ const Disc = ({
 /** 墙面墙皮（Fabric028，CC0）。 */
 const WallSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = useLoader(TextureLoader, [
-    `/textures/wall/${preset.wall}-color.jpg`,
-    `/textures/wall/${preset.wall}-normal.jpg`
-  ]);
-  const [map, normalMap, roughnessMap] = textures;
+  const map = useLoader(TextureLoader, `/textures/wall/${preset.wall}-color.jpg`);
 
   useEffect(() => {
-    for (const texture of textures) {
-      if (!texture) {
-        continue;
-      }
-
-      texture.anisotropy = 8;
-      texture.wrapS = RepeatWrapping;
-      texture.wrapT = RepeatWrapping;
-      texture.repeat.set(26, 2.2);
-      texture.anisotropy = 8;
-      texture.needsUpdate = true;
-    }
-
-    if (map) {
-      map.colorSpace = SRGBColorSpace;
-    }
-  }, [map, textures]);
+    map.anisotropy = 8;
+    map.wrapS = RepeatWrapping;
+    map.wrapT = RepeatWrapping;
+    map.repeat.set(26, 2.2);
+    map.colorSpace = SRGBColorSpace;
+    map.needsUpdate = true;
+  }, [map]);
 
   return (
     <meshStandardMaterial
       color="#9d9186"
-      map={map ?? null}
+      map={map}
       metalness={0.02}
       roughness={0.92}
     />
@@ -207,36 +172,22 @@ const BackWall = () => (
 /** 柜体立面（Wood008 竖纹，CC0）。 */
 const CabinetSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = useLoader(TextureLoader, [
-    `/textures/base/${preset.base}-color.jpg`,
-    `/textures/base/${preset.base}-normal.jpg`
-  ]);
-  const [map, normalMap, roughnessMap] = textures;
+  const map = useLoader(TextureLoader, `/textures/base/${preset.base}-color.jpg`);
 
   useEffect(() => {
-    for (const texture of textures) {
-      if (!texture) {
-        continue;
-      }
-
-      texture.anisotropy = 8;
-      texture.wrapS = RepeatWrapping;
-      texture.wrapT = RepeatWrapping;
-      // 柜体 40 × 1.2，格子 2m；竖纹材质直接映射为竖向
-      texture.repeat.set(20, 0.6);
-      texture.anisotropy = 8;
-      texture.needsUpdate = true;
-    }
-
-    if (map) {
-      map.colorSpace = SRGBColorSpace;
-    }
-  }, [map, textures]);
+    map.anisotropy = 8;
+    map.wrapS = RepeatWrapping;
+    map.wrapT = RepeatWrapping;
+    // 柜体 40 × 1.2，格子 2m；竖纹材质直接映射为竖向
+    map.repeat.set(20, 0.6);
+    map.colorSpace = SRGBColorSpace;
+    map.needsUpdate = true;
+  }, [map]);
 
   return (
     <meshStandardMaterial
       color="#c2b09a"
-      map={map ?? null}
+      map={map}
       metalness={0.05}
       roughness={0.7}
     />
@@ -246,40 +197,26 @@ const CabinetSurface = () => {
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
 const DeskSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = useLoader(TextureLoader, [
-    `/textures/table/${preset.table}-color.jpg`,
-    `/textures/table/${preset.table}-normal.jpg`
-  ]);
-  const [map, normalMap, roughnessMap] = textures;
+  const map = useLoader(TextureLoader, `/textures/table/${preset.table}-color.jpg`);
 
   useEffect(() => {
-    for (const texture of textures) {
-      if (!texture) {
-        continue;
-      }
-
-      texture.anisotropy = 8;
-      texture.wrapS = RepeatWrapping;
-      texture.wrapT = RepeatWrapping;
-      // 台面 40 × 0.62，格子 2m；横向木纹沿台面长边
-      texture.repeat.set(20, 0.31);
-      texture.anisotropy = 8;
-      texture.needsUpdate = true;
-    }
-
-    if (map) {
-      map.colorSpace = SRGBColorSpace;
-    }
-  }, [map, textures]);
+    map.anisotropy = 8;
+    map.wrapS = RepeatWrapping;
+    map.wrapT = RepeatWrapping;
+    // 台面 40 × 0.62，格子 2m；横向木纹沿台面长边
+    map.repeat.set(20, 0.31);
+    map.colorSpace = SRGBColorSpace;
+    map.needsUpdate = true;
+  }, [map]);
 
   return (
     <mesh castShadow position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
       <boxGeometry args={[40, 0.12, 0.62]} />
       <meshStandardMaterial
-        map={map ?? null}
+        map={map}
         metalness={0.04}
-          roughness={0.72}
-        />
+        roughness={0.72}
+      />
     </mesh>
   );
 };
@@ -323,7 +260,6 @@ const FrameProbe = () => {
 const Carousel = ({
   groups,
   currentGroupId,
-  favoriteGroupIds,
   focusIndex,
   focusNonce,
   highlightedGroupId,
@@ -332,7 +268,6 @@ const Carousel = ({
   scrollRef
 }: {
   readonly currentGroupId: string | null;
-  readonly favoriteGroupIds: readonly string[];
   readonly focusIndex: number;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
@@ -349,7 +284,6 @@ const Carousel = ({
   const loopable = total > VISIBLE;
 
   const state = useRef({ dragging: false, lastX: 0, offset: 0, target: 0, velocity: 0 });
-  const favoriteSet = useMemo(() => new Set(favoriteGroupIds), [favoriteGroupIds]);
 
   // 搜索命中：把目标槽位滑到正中（循环模式走最短方向），不改相机。
   useEffect(() => {
@@ -488,7 +422,6 @@ const Carousel = ({
             highlighted={group.id === highlightedGroupId}
             id={group.id}
             isCurrent={group.id === currentGroupId}
-            isFavorite={favoriteSet.has(group.id)}
             key={group.id}
             onPointerOverAction={() => {
               onHover(`${group.artist} · ${group.title}`);
@@ -498,158 +431,8 @@ const Carousel = ({
             }}
             position={[0, BASE_Y, 0]}
             rotationY={0}
-            scale={1}
           />
         ))}
-      </group>
-    </group>
-  );
-};
-/* ---------- 扇开（组内曲目） ---------- */
-
-const Fan = ({
-  group,
-  onSelect,
-  tracks
-}: {
-  readonly group: GalleryGroup;
-  readonly onSelect: (track: Track) => void;
-  readonly tracks: readonly Track[];
-}) => {
-  const items = group.trackIds
-    .map((trackId) => tracks.find((track) => track.id === trackId))
-    .filter((track): track is Track => Boolean(track));
-
-  return (
-    <group position={[0, BASE_Y, 0.35]}>
-      {items.map((track, index) => {
-        const center = (items.length - 1) / 2;
-        const x = (index - center) * GAP * 0.72;
-        const rotation = (index - center) * -0.12;
-
-        return (
-          <group key={track.id} position={[x, 0, Math.abs(index - center) * 0.03]} rotation={[0, rotation, 0]}>
-            <Disc
-              coverPath={track.coverPath ?? group.coverPath}
-              id={`${group.id}-${track.id}`}
-              isCurrent={false}
-              isFavorite={false}
-              onSelect={() => {
-                onSelect(track);
-              }}
-              position={[0, 0, 0]}
-              rotationY={0}
-              scale={1.05}
-            />
-          </group>
-        );
-      })}
-    </group>
-  );
-};
-
-/* ---------- 播放台：悬浮 CD + 非文字信息 ---------- */
-
-const PlayerStage = ({
-  onNext,
-  onPrev,
-  onToggle,
-  playing,
-  progress,
-  track
-}: {
-  readonly onNext: () => void;
-  readonly onPrev: () => void;
-  readonly onToggle: () => void;
-  readonly playing: boolean;
-  readonly progress: number;
-  readonly track: Track | null;
-}) => {
-  const texture = useCoverTexture(track?.coverPath ?? null);
-  const groupRef = useRef<Group>(null);
-  const pointer = useRef({ x: 0, y: 0 });
-
-  const { gl, invalidate } = useThree();
-
-  useEffect(() => {
-    const element = gl.domElement;
-
-    const handleMove = (event: PointerEvent): void => {
-      pointer.current.x = (event.clientX / window.innerWidth - 0.5) * 2;
-      pointer.current.y = (event.clientY / window.innerHeight - 0.5) * 2;
-      invalidate();
-    };
-
-    element.addEventListener("pointermove", handleMove);
-
-    return () => {
-      element.removeEventListener("pointermove", handleMove);
-    };
-  }, [gl, invalidate]);
-
-  useFrame((state, delta) => {
-    const group = groupRef.current;
-
-    if (!group) {
-      return;
-    }
-
-    const damping = 1 - Math.pow(0.001, Math.min(delta, 0.1));
-
-    group.rotation.y = MathUtils.lerp(group.rotation.y, pointer.current.x * 0.22, damping);
-    group.rotation.x = MathUtils.lerp(group.rotation.x, -pointer.current.y * 0.16, damping);
-
-    if (texture) {
-      texture.center.set(0.5, 0.5);
-    }
-
-    if (playing) {
-      group.rotation.z += delta * 0.6;
-    }
-  });
-
-  const arc = Math.max(0.001, Math.min(1, progress));
-
-  return (
-    <group>
-      <group position={[0, 1.55, 1.2]} ref={groupRef}>
-        <mesh>
-          <cylinderGeometry args={[1.0, 1.0, 0.03, 64]} />
-          <meshStandardMaterial color="#0d1017" metalness={0.8} roughness={0.35} />
-        </mesh>
-        <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.86, 64]} />
-          {texture ? (
-            <meshStandardMaterial map={texture} roughness={0.4} metalness={0.2} toneMapped={false} />
-          ) : (
-            <meshStandardMaterial color="#2a2f3d" roughness={0.5} metalness={0.2} />
-          )}
-        </mesh>
-        {/* 进度环：非文字表达，绕盘一圈 */}
-        <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.98, 1.01, 96, 1, 0, Math.PI * 2]} />
-          <meshBasicMaterial color="#2b3040" toneMapped={false} />
-        </mesh>
-        <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.98, 1.01, 96, 1, Math.PI / 2 - arc * Math.PI * 2, arc * Math.PI * 2]} />
-          <meshBasicMaterial color="#ff7aa8" toneMapped={false} />
-        </mesh>
-      </group>
-
-      {/* 控制：只有图标，不写字；点击区域在 DOM 层由 SceneStage 提供 */}
-      <group visible={false}>
-        <mesh onClick={onPrev} position={[-0.9, 0.55, 1.6]}>
-          <boxGeometry args={[0.2, 0.2, 0.02]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <mesh onClick={onToggle} position={[0, 0.55, 1.6]}>
-          <boxGeometry args={[0.2, 0.2, 0.02]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <mesh onClick={onNext} position={[0.9, 0.55, 1.6]}>
-          <boxGeometry args={[0.2, 0.2, 0.02]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
       </group>
     </group>
   );
@@ -659,37 +442,21 @@ const PlayerStage = ({
 
 export interface GalleryExperienceProps {
   readonly currentTrackId: string | null;
-  readonly durationSeconds: number;
-  readonly favoriteGroupIds: readonly string[];
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
-  readonly onNext: () => void;
   readonly onPlayTrack: (track: Track) => void;
-  readonly onPrev: () => void;
-  readonly onToggle: () => void;
-  readonly playing: boolean;
-  readonly positionSeconds: number;
   readonly tracks: readonly Track[];
 }
 
 export const GalleryExperience = ({
   currentTrackId,
-  durationSeconds,
-  favoriteGroupIds,
   focusGroupId,
   focusNonce,
   groups,
-  onNext,
   onPlayTrack,
-  onPrev,
-  onToggle,
-  playing,
-  positionSeconds,
   tracks
 }: GalleryExperienceProps) => {
-  const [stage, setStage] = useState<Stage>("gallery");
-  const [expandedGroup, setExpandedGroup] = useState<GalleryGroup | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
@@ -702,8 +469,6 @@ export const GalleryExperience = ({
 
     return group?.id ?? null;
   }, [currentTrackId, groups]);
-
-  const progress = durationSeconds > 0 ? positionSeconds / durationSeconds : 0;
 
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("detail") === "1" && groups.length > 1) {
@@ -718,7 +483,6 @@ export const GalleryExperience = ({
     }
 
     setDetailGroup(null);
-    setStage("gallery");
     setHighlightedGroupId(focusGroupId);
 
     const timer = window.setTimeout(() => {
@@ -773,10 +537,9 @@ export const GalleryExperience = ({
         <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
 
   
-      {!detailGroup && stage === "gallery" ? (
+      {!detailGroup ? (
           <Carousel
             currentGroupId={currentGroupId}
-            favoriteGroupIds={favoriteGroupIds}
             focusIndex={searchFocusIndex}
             focusNonce={focusNonce}
             groups={groups}
@@ -806,28 +569,6 @@ export const GalleryExperience = ({
             tint={tintOf(detailGroup.id)}
           />
         ) : null}
-
-        {!detailGroup && stage === "expanded" && expandedGroup ? (
-          <Fan
-            group={expandedGroup}
-            onSelect={(track) => {
-              onPlayTrack(track);
-              setStage("player");
-            }}
-            tracks={tracks}
-          />
-        ) : null}
-
-        {stage === "player" ? (
-          <PlayerStage
-            onNext={onNext}
-            onPrev={onPrev}
-            onToggle={onToggle}
-            playing={playing}
-            progress={progress}
-            track={currentTrack}
-          />
-        ) : null}
       </Canvas>
 
       {detailGroup ? (
@@ -855,85 +596,44 @@ export const GalleryExperience = ({
         <p>CD · ALBUM · MUSIC</p>
       </div>
 
-      {stage === "gallery" ? (
-        <>
-          <div className="gallery-caption">
-            <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
-            <p className="gallery-caption__hint">
-              {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
-            </p>
-          </div>
+      <div className="gallery-caption">
+        <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
+        <p className="gallery-caption__hint">
+          {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
+        </p>
+      </div>
 
-          <div className="gallery-open">
-            <button
-              aria-label="上一张"
-              className="gallery-open__arrow"
-              onClick={() => {
-                scrollRef.current += 1;
-              }}
-              type="button"
-            >
-              ‹
-            </button>
-            <button
-              aria-label="下一张"
-              className="gallery-open__arrow"
-              onClick={() => {
-                scrollRef.current -= 1;
-              }}
-              type="button"
-            >
-              ›
-            </button>
-          </div>
-
-          <div className="gallery-dashes" aria-hidden="true">
-            {Array.from({ length: Math.min(groups.length, 4) }, (_unused, index) => (
-              <span
-                className={`gallery-dashes__item${index === Math.min(focusIndex - 1, 3) ? " is-active" : ""}`}
-                key={`dash-${index}`}
-              />
-            ))}
-          </div>
-        </>
-      ) : null}
-
-      {stage === "expanded" ? (
+      <div className="gallery-open">
         <button
-          className="gallery-backdrop"
+          aria-label="上一张"
+          className="gallery-open__arrow"
           onClick={() => {
-            setExpandedGroup(null);
-            setStage("gallery");
+            scrollRef.current += 1;
           }}
           type="button"
         >
-          <span className="sr-only">返回展开前</span>
+          ‹
         </button>
-      ) : null}
+        <button
+          aria-label="下一张"
+          className="gallery-open__arrow"
+          onClick={() => {
+            scrollRef.current -= 1;
+          }}
+          type="button"
+        >
+          ›
+        </button>
+      </div>
 
-      {stage === "player" ? (
-        <div className="gallery-controls">
-          <button aria-label="上一首" className="gallery-control" onClick={onPrev} type="button">
-            ◀
-          </button>
-          <button aria-label={playing ? "暂停" : "播放"} className="gallery-control is-primary" onClick={onToggle} type="button">
-            {playing ? "❙❙" : "▶"}
-          </button>
-          <button aria-label="下一首" className="gallery-control" onClick={onNext} type="button">
-            ▶
-          </button>
-          <button
-            aria-label="返回展厅"
-            className="gallery-control is-quiet"
-            onClick={() => {
-              setStage("gallery");
-            }}
-            type="button"
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
+      <div className="gallery-dashes" aria-hidden="true">
+        {Array.from({ length: Math.min(groups.length, 4) }, (_unused, index) => (
+          <span
+            className={`gallery-dashes__item${index === Math.min(focusIndex - 1, 3) ? " is-active" : ""}`}
+            key={`dash-${index}`}
+          />
+        ))}
+      </div>
 
       {/* 有当前曲目就显示音量环：详情场景里开始播放后也能直接调音量。 */}
       {currentTrack ? <VolumeRing onChange={setVolume} value={volume} /> : null}

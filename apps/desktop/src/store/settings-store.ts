@@ -28,7 +28,7 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
     set({
       theme: settings.theme,
       motionTier: settings.motionTier,
-      librarySort: settings.librarySort,
+      librarySort: settings.librarySort ?? "title",
       scenePreset: settings.scenePreset ?? defaultScenePreset,
       hydration: "ready"
     });

@@ -1,4 +1,4 @@
-import { Box3, DoubleSide, Group, Material, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
+import { Box3, Group, Material, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 export const CASE_MODEL_URL = "/models/cd-case.glb";

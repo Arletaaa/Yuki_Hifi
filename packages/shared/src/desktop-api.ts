@@ -15,11 +15,6 @@ export type DesktopPlatform =
   | "cygwin"
   | "netbsd";
 
-export interface BackgroundImageSelectionResult {
-  readonly canceled: boolean;
-  readonly filePath: string | null;
-}
-
 export interface AudioFileSelectionResult {
   readonly canceled: boolean;
   readonly filePaths: readonly string[];
@@ -65,7 +60,6 @@ export interface ArltHifiDesktopApi {
   /** 删除副本文件并从曲库移除。 */
   readonly deleteTrack: (trackId: string) => Promise<boolean>;
   readonly onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void) => () => void;
-  readonly selectBackgroundImage: () => Promise<BackgroundImageSelectionResult>;
   readonly loadSettings: () => Promise<AppSettings>;
   readonly saveSettings: (settings: AppSettings) => Promise<AppSettings>;
 }
@@ -76,8 +70,4 @@ export const createTrackMediaUrl = (track: Track): string => {
 
 export const createCoverMediaUrl = (coverPath: string): string => {
   return `${mediaProtocolScheme}://image/${encodeURIComponent(coverPath)}`;
-};
-
-export const createBackgroundMediaUrl = (filePath: string): string => {
-  return `${mediaProtocolScheme}://image/${encodeURIComponent(filePath)}`;
 };
