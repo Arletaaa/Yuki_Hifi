@@ -6,6 +6,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import type { Track } from "@arlhifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
 import { getSeedHue } from "../lib/seed";
+import { normalizeLightPreset } from "../lib/light-presets";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
 import { ContactShadow } from "./contact-shadows";
@@ -14,7 +15,7 @@ import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
 import { usePlayerStore } from "../store/player-store";
 import { VolumeRing } from "../components/volume-ring";
-import { DappledLight, LightShafts } from "./light-effects";
+import { LightEffects, SceneLighting } from "./light-effects";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -463,6 +464,8 @@ export const GalleryExperience = ({
   const scrollRef = useRef(0);
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
+  const scenePreset = useSettingsStore((state) => state.scenePreset);
+  const lightVariant = normalizeLightPreset(scenePreset.light);
   const currentTrack = tracks.find((track) => track.id === currentTrackId) ?? null;
   const currentGroupId = useMemo(() => {
     const group = groups.find((candidate) => currentTrackId !== null && candidate.trackIds.includes(currentTrackId));
@@ -510,31 +513,10 @@ export const GalleryExperience = ({
           camera.lookAt(LOOK_AT[0], LOOK_AT[1], LOOK_AT[2]);
         }}
       >
-        <color args={["#080b12"]} attach="background" />
-        <fog args={["#080b12", 6, 16]} attach="fog" />
         <ProceduralEnvironment />
         <FrameProbe />
-        <LightShafts />
-        <DappledLight />
-        <hemisphereLight args={["#cfe0ff", "#2a2118", 0.12]} />
-        <ambientLight intensity={0.12} />
-        <directionalLight
-          castShadow
-          color="#fff0dc"
-          intensity={2.4}
-          position={[2.8, 3.6, 3.4]}
-          shadow-bias={-0.0003}
-          shadow-camera-bottom={-1.6}
-          shadow-camera-far={14}
-          shadow-camera-left={-6}
-          shadow-camera-near={1}
-          shadow-camera-right={6}
-          shadow-camera-top={4}
-          shadow-mapSize-height={2048}
-          shadow-mapSize-width={2048}
-          shadow-normalBias={0.018}
-        />
-        <directionalLight color="#9aa6b8" intensity={0.35} position={[-3, 2, 2]} />
+        <SceneLighting variant={lightVariant} />
+        <LightEffects variant={lightVariant} />
 
   
       {!detailGroup ? (

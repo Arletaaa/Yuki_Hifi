@@ -48,7 +48,6 @@ export interface PlayerSnapshot {
 export interface ScenePreset {
   readonly base: string;
   readonly light: string;
-  readonly silhouette: string;
   readonly table: string;
   readonly wall: string;
 }
@@ -57,7 +56,6 @@ export const defaultScenePreset: ScenePreset = {
   table: "wood029",
   base: "wood002",
   wall: "fabric009",
-  silhouette: "leafset015",
   light: "morning"
 };
 

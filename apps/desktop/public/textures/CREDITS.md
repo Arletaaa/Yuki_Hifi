@@ -3,7 +3,7 @@
 本目录中的资源全部来自可自由使用的来源。**新增素材必须在此登记，否则不得提交。**
 
 纹理统一按 `textures/<类别>/<材质 id>-{color,normal,roughness}.jpg` 存放：
-颜色贴图最长边 2048、法线与粗糙度 1024，JPEG 渐进式，总计约 10.8 MB。
+颜色贴图最长边 2048、法线与粗糙度 1024，JPEG 渐进式，总计约 8.9 MB。
 
 ## 纹理（全部 ambientCG，CC0，无需署名）
 
@@ -12,7 +12,6 @@
 | `table/` | wood002 / wood007 / wood092 / wood096 | Wood002 / Wood007 / Wood092 / Wood096 2K JPG |
 | `base/` | wood029 / wood066 / wood069 / wood095 | Wood029 / Wood066 / Wood069 / Wood095 2K JPG |
 | `wall/` | fabric009 / fabric048 / leather012 / woodsiding009 | Fabric009 / Fabric048 / Leather012 / WoodSiding009 2K JPG |
-| `leaf/` | leafset004 / leafset015 / leafset019 / leafset025 | LeafSet004 / LeafSet015 / LeafSet019 / LeafSet025 2K JPG |
 
 来源：https://ambientcg.com — 许可证 CC0 1.0（可商用、可修改、无需署名）。
 

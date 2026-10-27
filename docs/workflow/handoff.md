@@ -1,4 +1,4 @@
-# 交接状态（2026-10-27 收口 · 第四轮）
+# 交接状态（2026-10-27 收口 · 第六轮）
 
 ## 这一阶段的成果
 
@@ -6,14 +6,14 @@
 | --- | --- |
 | 主界面 | 3D 画廊 + 详情 + 设置浮层；旧 rail / player-bar / 列表页 / 队列页 / 播放台、壁纸与主题页**已全部删除** |
 | 顶栏 | 搜索框（标题/艺术家/专辑近似匹配）+ 结果浮层（最多 8 条，↑↓/Enter/Esc），点击飞到对应 CD |
-| 设置 | 全透明浮层（Portal 到 body，z-index 9999）；音乐库导入 + **排序** + **曲目管理** + 材质球 + 音量 + 版权 |
+| 设置 | 两栏浮层（左曲库 / 右场景）；音乐库导入 + **排序** + **曲目管理** + 2×2 材质网格 + 三档光效 + 音量 + 版权 |
 | 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers`；支持排序 / 重命名 / 设封面 / 删除 |
 | 播放 | 有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数）；HTMLAudioElement 播放链路保留 |
-| 场景预设 | `scenePreset { table, base, wall, silhouette, light }` 已写入 `settings.json`，台面 / 台底 / 墙面**实时驱动**；`silhouette` / `light` 目前只存不用（见技术债） |
+| 场景预设 | `scenePreset { table, base, wall, light }` 已写入 `settings.json`，台面 / 台底 / 墙面 / **光效**全部**实时驱动**；剪影已删除 |
 | 持久化 | Electron 走 `settings.json`；网页预览走 `localStorage["arlt-hifi-settings"]` |
-| 素材 | 16 套 2K 材质压缩为 48 个文件（10.8MB），按 `table/ base/ wall/ leaf/` 分类；`CREDITS.md` 已登记（CC0 + CC-BY） |
+| 素材 | 12 套 2K 材质压缩为 36 个文件（8.9MB），按 `table/ base/ wall/` 分类；`CREDITS.md` 已登记（CC0 + CC-BY） |
 | CD 模型 | 合盖版 GLB 接入，封面按内页包围盒精确贴合；详情场景可开盖、盘片可拖出并限位 |
-| 光效 | 丁达尔光束（6 片叠加软光条，漂移 + 呼吸）与流动光斑（150 个模糊圆斑，缓慢平移） |
+| 光效 | 三档可切换：晨光（暖光柱 + 光斑）、夜色（冷色窄光柱 + 低照度）、聚光（顶部追光 + 光池）；见下文 |
 | 阴影 | 已修复：墙面接收阴影、主光角度、台面投影、接触阴影（见下文记录） |
 | 构建 | **Electron 主进程/preload 改 esbuild 打包**，修掉"应用一启动就崩"（之前 tsc 产物直接 import TS 源码） |
 | 清理 | 删掉 10 个废弃组件、壁纸体系、不可达的播放台/扇开、shell.css 与死样式；CSS 46.4 KB → 22.9 KB |
@@ -163,7 +163,16 @@
 - 验证：`pnpm dev` 从缓存直接启动；`pnpm start -- --remote-debugging-port=9224` 打开 `arlt-hifi-app://bundle/index.html`，canvas 正常、preload API 存在、无资源 404（控制台只剩 Electron 的开发期 CSP 警告）。
 - 注意：`%LOCALAPPDATA%\arlt-hifi-dev` 约 200MB；删掉后下次启动会重新复制。打包产物安装到正常目录后不依赖这个缓存。
 
-## 未解决
+## 场景预设与光效（第六轮）
+
+- 删除「剪影」：设置项、`ScenePreset.silhouette`、默认值与 `mergeSettings` 读取、4 套 leaf 贴图（16 文件 2.14MB）一起移除；`CREDITS.md` / ADR-006 / README 同步。
+- 光效移到原剪影的位置，并真正接入场景（`scene/light-effects.tsx`）：
+  - **晨光**：6 片暖色光柱 + 150 个暖色光斑，暖主光；
+  - **夜色**：3 片冷色窄光柱 + 70 个冷色光斑，压低环境光、主光转冷；
+  - **聚光**：无光柱/光斑，顶部 SpotLight + 墙面/台面光池，压暗四周。
+- `lib/light-presets.ts` 提供 id / 名称 / 材质球渐变与描述；旧设置里的未知值回退到晨光。
+- 设置排版：两栏（左曲库、右场景），场景材质为 2×2 网格（台面/台底、墙面/光效），光效球带名称、音量行带数值；窄屏（≤900px）自动单栏。
+- 验证：三档光效截图对比（晨光暖色光柱、夜色冷色低照度、聚光中央光池），设置面板两栏布局无溢出；`pnpm typecheck` / `pnpm test` / `pnpm build` 全绿。
 
 ## 未解决
 
@@ -172,11 +181,11 @@
 - **重命名没有写标签**：只改了副本文件名和 manifest 里的 title（`music-metadata` 只读，没有引入 tag writer）。重新导入同一个源文件会带回旧标签。
 - 重命名正在播放的曲目时，`currentTrack` 仍按 id 保留旧对象（文件路径已变）；极端情况下暂停/恢复可能读不到文件。
 - 搜索行为是"结果浮层 + 飞行"（按 ADR-006 决策 3），不再过滤画廊；如果还想要过滤需要另做开关。
-- 设置浮层内容较长（音乐库 + 排序 + 管理 + 材质 + 音量），小窗口下需要滚动；后续可把"管理"拆成独立面板。
+- 设置浮层内容较长（音乐库 + 排序 + 管理 + 场景 + 音量），极窄窗口下需要滚动；后续可把「管理」拆成独立面板。
 - 导入在**批末**写 manifest：中途崩溃/断电会留下孤儿副本，再次导入同名文件会变成 ` (2)`；如需更强一致性，可每成功一首就落盘或先写临时清单。
 - 曲库没有「刷新/监听文件变化」：手工往 `userData/library` 放文件不会被发现；删文件只在下次 `library:load` 时剔除。
 - 导入是串行逐文件处理，没有取消；几百首的文件夹会占用 UI（有进度但没有停止按钮）。
-- 设置面板「剪影」「光效」两组材质球**没有任何代码消费**（`scenePreset.silhouette` / `.light` 只写入 `settings.json`）；要么接回场景，要么删掉这两组（连同 4 套 leaf 贴图）。
+- 设置面板的「光效」目前用 Canvas 贴图 + 叠加平面模拟（光柱/光斑/光池），不是真正的体积光；聚光灯参数在 `scene/light-effects.tsx` 顶部常量里调。
 - `gallery-stage.tsx` 仍有 600+ 行，混了相机、货架、CD、详情、光效、搜索飞行、音量环，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
 - 详情场景的盘片自转仍缺（转动整个 `CD_1` 会让盘片侧翻，需要单独转 `Object_13` 的局部法线轴）。
 - 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；且 demo API 存在时 `useSaveSettings` 走 demo 的 `saveSettings`，preview 实际不写 localStorage。

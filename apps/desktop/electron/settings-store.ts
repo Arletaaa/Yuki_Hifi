@@ -30,7 +30,6 @@ const readPreset = (raw: unknown): ScenePreset => {
     table: pick(record.table, defaultScenePreset.table),
     base: pick(record.base, defaultScenePreset.base),
     wall: pick(record.wall, defaultScenePreset.wall),
-    silhouette: pick(record.silhouette, defaultScenePreset.silhouette),
     light: pick(record.light, defaultScenePreset.light)
   };
 };
