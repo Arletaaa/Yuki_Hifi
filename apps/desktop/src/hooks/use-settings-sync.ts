@@ -14,6 +14,7 @@ export const useSaveSettings = (): void => {
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const hydration = useSettingsStore((state) => state.hydration);
   const volume = usePlayerStore((state) => state.volume);
+  const playbackMode = usePlayerStore((state) => state.playbackMode);
   const favorites = usePlayerStore((state) => state.favorites);
   const lastSaved = useRef<string | null>(null);
 
@@ -28,6 +29,7 @@ export const useSaveSettings = (): void => {
       favorites,
       librarySort,
       motionTier,
+      playbackMode,
       scenePreset,
       theme,
       volume
@@ -52,5 +54,5 @@ export const useSaveSettings = (): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [favorites, hydration, librarySort, motionTier, scenePreset, theme, volume]);
+  }, [favorites, hydration, librarySort, motionTier, playbackMode, scenePreset, theme, volume]);
 };

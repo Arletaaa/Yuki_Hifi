@@ -82,6 +82,8 @@ export interface SettingsOverlayProps {
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
+  const playbackMode = usePlayerStore((state) => state.playbackMode);
+  const setPlaybackMode = usePlayerStore((state) => state.setPlaybackMode);
   const library = usePlayerStore((state) => state.library);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const setScenePreset = useSettingsStore((state) => state.setScenePreset);
@@ -333,19 +335,47 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
         <SwatchGroup items={LIGHT_SWATCHES} label="光效" onChange={(id) => { setScenePreset({ light: id }); }} value={scenePreset.light} />
       </div>
 
-      <div className="overlay-volume__row">
-        <p className="overlay-volume__label">音量</p>
-        <input
-          aria-label="音量"
-          className="overlay-volume"
-          max={100}
-          min={0}
-          onChange={(event) => {
-            setVolume(Number(event.currentTarget.value));
-          }}
-          type="range"
-          value={volume}
-        />
+      <div className="settings-footer">
+        <div className="playback-mode">
+          <p className="preset-group__label">播放</p>
+          <div className="library-sort__options" role="group" aria-label="播放模式">
+            <button
+              aria-pressed={playbackMode === "repeat-one"}
+              className={`library-sort__option${playbackMode === "repeat-one" ? " is-active" : ""}`}
+              onClick={() => {
+                setPlaybackMode("repeat-one");
+              }}
+              type="button"
+            >
+              循环播放
+            </button>
+            <button
+              aria-pressed={playbackMode === "stop"}
+              className={`library-sort__option${playbackMode === "stop" ? " is-active" : ""}`}
+              onClick={() => {
+                setPlaybackMode("stop");
+              }}
+              type="button"
+            >
+              播完即停
+            </button>
+          </div>
+        </div>
+
+        <div className="overlay-volume__row">
+          <p className="overlay-volume__label">音量</p>
+          <input
+            aria-label="音量"
+            className="overlay-volume"
+            max={100}
+            min={0}
+            onChange={(event) => {
+              setVolume(Number(event.currentTarget.value));
+            }}
+            type="range"
+            value={volume}
+          />
+        </div>
       </div>
 
       <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>

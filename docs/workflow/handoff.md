@@ -4,11 +4,11 @@
 
 | 领域 | 状态 |
 | --- | --- |
-| 主界面 | 3D 画廊 + 详情 + 设置浮层；旧 rail / player-bar / 列表页 / 队列页 / 播放台、壁纸与主题页**已全部删除** |
+| 主界面 | 3D 画廊 + 详情 + 设置浮层；画廊滑动限制在 CD 列表内，越界 30% 阻尼并自动回弹；旧 rail / player-bar / 列表页 / 队列页 / 播放台、壁纸与主题页**已全部删除** |
 | 顶栏 | 搜索框（标题/艺术家/专辑近似匹配）+ 结果浮层（最多 8 条，↑↓/Enter/Esc），点击飞到对应 CD |
-| 设置 | 全透明浮层（Portal 到 body）：音乐库导入 + 排序 + 曲目管理 + 材质球 + 三档光效 + 音量 + 版权；间距已放宽 |
+| 设置 | 全透明浮层（Portal 到 body）：音乐库导入 + 排序 + 曲目管理 + 材质球 + 三档光效 + 播放模式 + 音量 + 版权；间距已放宽 |
 | 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers`；支持排序 / 重命名 / 设封面 / 删除 |
-| 播放 | 有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数）；HTMLAudioElement 播放链路保留 |
+| 播放 | **循环播放 / 播完即停**两种模式，不做自动跳曲；有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数）；HTMLAudioElement 播放链路保留 |
 | 场景预设 | `scenePreset { table, base, wall, light }` 已写入 `settings.json`，台面 / 台底 / 墙面 / **光效**全部**实时驱动**；剪影已删除 |
 | 持久化 | Electron 走 `settings.json`；网页预览走 `localStorage["arlt-hifi-settings"]` |
 | 素材 | 12 套 2K 材质压缩为 36 个文件（8.9MB），按 `table/ base/ wall/` 分类；`CREDITS.md` 已登记（CC0 + CC-BY） |
@@ -17,7 +17,7 @@
 | 阴影 | 已修复：墙面接收阴影、主光角度、台面投影、接触阴影（见下文记录） |
 | 构建 | **Electron 主进程/preload 改 esbuild 打包**，修掉"应用一启动就崩"（之前 tsc 产物直接 import TS 源码） |
 | 清理 | 删掉 10 个废弃组件、壁纸体系、不可达的播放台/扇开、shell.css 与死样式；CSS 46.4 KB → 22.9 KB |
-| 门禁 | `pnpm typecheck` / `pnpm test`（101 + 11 + 6）/ `pnpm build` 全绿 |
+| 门禁 | `pnpm typecheck` / `pnpm test`（104 + 11 + 6）/ `pnpm build` 全绿 |
 
 ## 阴影修复记录（第一轮）
 
@@ -177,8 +177,16 @@
 
 - 现象：音量环拖到 0 后再往底部缺口挪一点，读数直接跳到 100。
 - 根因：底部 90° 缺口内的角度被 `+360°` 后落进 405°–494°，再 clamp 成 100；设置里的线性滑块本身正常（CDP 验证归零保持 0）。
-- 修复：`lib/volume.ts` 新增 `volumeFromPointerAngle`，缺口内返回 `null` 并忽略这次移动；`volume-ring.tsx` 用它替换原来的角度换算。补了 5 项单测（两端、缺口、负角度、自定义起始角、clamp）。
-- 验证：CDP 模拟拖拽——135°→0，进入缺口后仍为 0，转到 45°→100。
+- 修复：`lib/volume.ts` 新增 `volumeFromPointerAngle`，缺口内返回 `null` 并忽略这次移动；`volume-ring.tsx` 用它替换原来的角度换算，并记录是否穿过了缺口——从另一侧出来且与当前值相差 >45 时保持当前边界值，回到当前值附近才重新接管。
+- 验证：CDP 模拟拖拽——135°→0，穿过缺口到 100 侧仍为 0，回到 0 侧附近恢复为 2；从 100 穿过缺口到 0 侧仍为 100，回到 100 侧附近为 98。
+
+## 播放模式与画廊边界（2026-10-28）
+
+- 播放模式只剩「循环播放 / 播完即停」：`PlaybackMode = "repeat-one" | "stop"`，写入 `settings.json`；删除 sequential / shuffle、自动跳曲、`playNext` / `playPrevious` / `cyclePlaybackMode` 与队列导航纯函数。
+- 播完行为：循环模式在 `ended` 事件里直接重播本曲（否则 store 状态没变化，effect 不会重跑）；即停模式保持暂停、`currentTrack` 不变。
+- 设置底部新增「播放」两个选项（与音量同一行）；删除画廊右下角的三条横线（`.gallery-dashes`，原本在设置按钮左侧）。
+- 画廊去掉无限循环：offset 限制在 `[-(n-1)*GAP, 0]`；越界拖动只有 30% 跟手，松手吸附并平滑回弹；不再取模、不再渲染 400 张。
+- 验证：CDP 拖拽到最左后停在最后一张（小曲库 3 张也不扩散）；设置里切换模式时 `aria-pressed` 与 store 同步；音量环 0/100 穿越缺口不再跳变。
 
 ## 未解决
 
@@ -187,7 +195,7 @@
 - **重命名没有写标签**：只改了副本文件名和 manifest 里的 title（`music-metadata` 只读，没有引入 tag writer）。重新导入同一个源文件会带回旧标签。
 - 重命名正在播放的曲目时，`currentTrack` 仍按 id 保留旧对象（文件路径已变）；极端情况下暂停/恢复可能读不到文件。
 - 搜索行为是"结果浮层 + 飞行"（按 ADR-006 决策 3），不再过滤画廊；如果还想要过滤需要另做开关。
-- 设置浮层内容较长（音乐库 + 排序 + 管理 + 场景 + 音量），极窄窗口下需要滚动；后续可把「管理」拆成独立面板。
+- 设置浮层内容较长（音乐库 + 排序 + 管理 + 场景 + 播放模式 + 音量），极窄窗口下需要滚动；后续可把「管理」拆成独立面板。
 - 导入在**批末**写 manifest：中途崩溃/断电会留下孤儿副本，再次导入同名文件会变成 ` (2)`；如需更强一致性，可每成功一首就落盘或先写临时清单。
 - 曲库没有「刷新/监听文件变化」：手工往 `userData/library` 放文件不会被发现；删文件只在下次 `library:load` 时剔除。
 - 导入是串行逐文件处理，没有取消；几百首的文件夹会占用 UI（有进度但没有停止按钮）。
@@ -214,7 +222,7 @@
 
 ```powershell
 pnpm typecheck          # 三个 tsconfig 全绿
-pnpm test               # desktop 101 + shared 11 + harness 6
+pnpm test               # desktop 104 + shared 11 + harness 6
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
 pnpm dev                # Vite + Electron（首次会按需把运行时复制到 LOCALAPPDATA）

@@ -207,27 +207,19 @@
   cursor: pointer;
 }
 
-.gallery-dashes {
-  position: absolute;
-  right: 40px;
-  bottom: 52px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  pointer-events: none;
-}
-
-.gallery-dashes__item {
-  width: 26px;
-  height: 1px;
-  background: rgba(243, 238, 230, 0.28);
-}
-
-.gallery-dashes__item.is-active {
-  width: 48px;
-  background: rgba(243, 238, 230, 0.9);
-}
 /* ---------- CD 详情场景 ---------- */
+
+.gallery-transition-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  background-color: #2a1916;
+  background-position: center;
+  background-size: cover;
+  will-change: opacity;
+}
 
 .gallery-detail__back {
   position: absolute;
@@ -682,6 +674,29 @@
 .preset-ball.is-active .preset-ball__surface {
   outline: 2px solid #6fd08a;
   outline-offset: 5px;
+}
+
+.settings-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px 40px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(243, 238, 230, 0.12);
+}
+
+.playback-mode {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-footer .overlay-volume__row {
+  flex: 1;
+  min-width: 260px;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .overlay-volume__row {

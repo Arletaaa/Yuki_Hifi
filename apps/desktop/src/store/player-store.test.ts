@@ -93,75 +93,16 @@ describe("player store actions", () => {
     expect(store.getState().status).toBe("idle");
   });
 
-  it("does nothing when skipping with an empty queue", () => {
+  it("defaults to repeat-one and switches between the two playback modes", () => {
     const store = createPlayerStore();
 
-    store.getState().playNext();
-    store.getState().playPrevious();
-
-    expect(store.getState().currentTrack).toBeNull();
-    expect(store.getState().status).toBe("idle");
-  });
-
-  it("moves to next and previous tracks in the queue", () => {
-    const store = createPlayerStore();
-    const first = createTrack("track-1", "First");
-    const second = createTrack("track-2", "Second");
-    const third = createTrack("track-3", "Third");
-
-    store.getState().loadLibrary([first, second, third]);
-    store.getState().playTrack(second);
-    store.getState().playNext();
-
-    expect(store.getState().currentTrack).toEqual(third);
-
-    store.getState().playPrevious();
-
-    expect(store.getState().currentTrack).toEqual(second);
-  });
-
-  it("wraps next and previous navigation", () => {
-    const store = createPlayerStore();
-    const first = createTrack("track-1", "First");
-    const second = createTrack("track-2", "Second");
-
-    store.getState().loadLibrary([first, second]);
-    store.getState().playTrack(second);
-    store.getState().playNext();
-
-    expect(store.getState().currentTrack).toEqual(first);
-
-    store.getState().playPrevious();
-
-    expect(store.getState().currentTrack).toEqual(second);
-  });
-
-  it("cycles playback mode through sequential, repeat-one and shuffle", () => {
-    const store = createPlayerStore();
-
-    expect(store.getState().playbackMode).toBe("sequential");
-
-    store.getState().cyclePlaybackMode();
     expect(store.getState().playbackMode).toBe("repeat-one");
 
-    store.getState().cyclePlaybackMode();
-    expect(store.getState().playbackMode).toBe("shuffle");
+    store.getState().setPlaybackMode("stop");
+    expect(store.getState().playbackMode).toBe("stop");
 
-    store.getState().cyclePlaybackMode();
-    expect(store.getState().playbackMode).toBe("sequential");
-  });
-
-  it("keeps the same track when skipping in repeat-one mode", () => {
-    const store = createPlayerStore();
-    const first = createTrack("track-1", "First");
-    const second = createTrack("track-2", "Second");
-
-    store.getState().loadLibrary([first, second]);
-    store.getState().playTrack(first);
-    store.getState().cyclePlaybackMode();
-    store.getState().playNext();
-
-    expect(store.getState().currentTrack).toEqual(first);
+    store.getState().setPlaybackMode("repeat-one");
+    expect(store.getState().playbackMode).toBe("repeat-one");
   });
 
   it("clamps volume", () => {
@@ -334,36 +275,35 @@ describe("track end behaviour", () => {
     return { first, second, store };
   };
 
-  it("advances to the next track in sequential mode", () => {
-    const { first, second, store } = createQueue();
-
-    store.getState().playTrack(first);
-    store.getState().handleTrackEnded();
-
-    expect(store.getState().currentTrack).toEqual(second);
-    expect(store.getState().status).toBe("playing");
-  });
-
-  it("stops at the end of the queue in sequential mode", () => {
-    const { second, store } = createQueue();
-
-    store.getState().playTrack(second);
-    store.getState().handleTrackEnded();
-
-    expect(store.getState().currentTrack).toEqual(second);
-    expect(store.getState().status).toBe("paused");
-    expect(store.getState().positionSeconds).toBe(0);
-  });
-
-  it("replays the same track in repeat-one mode", () => {
+  it("replays the current track in repeat-one mode", () => {
     const { first, store } = createQueue();
 
     store.getState().playTrack(first);
-    store.getState().cyclePlaybackMode();
     store.getState().handleTrackEnded();
 
     expect(store.getState().currentTrack).toEqual(first);
     expect(store.getState().status).toBe("playing");
+    expect(store.getState().positionSeconds).toBe(0);
+  });
+
+  it("stops on the same track when play-once mode ends", () => {
+    const { first, store } = createQueue();
+
+    store.getState().playTrack(first);
+    store.getState().setPlaybackMode("stop");
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().status).toBe("paused");
+  });
+
+  it("does nothing when no track is playing", () => {
+    const { store } = createQueue();
+
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toBeNull();
+    expect(store.getState().status).toBe("idle");
   });
 
   it("toggles mute", () => {

@@ -1,7 +1,7 @@
 import { create, type StateCreator } from "zustand";
 import { createStore } from "zustand/vanilla";
-import { initialPlayerSnapshot, type PlayerSnapshot, type Track } from "@arlhifi/shared";
-import { getNextTrackIndex, getPreviousTrackIndex, getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
+import { initialPlayerSnapshot, type PlaybackMode, type PlayerSnapshot, type Track } from "@arlhifi/shared";
+import { getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
 
 export interface LibraryActions {
   readonly loadLibrary: (library: readonly Track[]) => void;
@@ -10,7 +10,6 @@ export interface LibraryActions {
 
 export interface QueueActions {
   readonly clearQueue: () => void;
-  readonly cyclePlaybackMode: () => void;
   readonly rebuildQueueFromLibrary: () => void;
   readonly removeFromQueue: (trackId: string) => void;
 }
@@ -19,11 +18,10 @@ export interface PlaybackActions {
   readonly handleTrackEnded: () => void;
   readonly markPlaybackPaused: () => void;
   readonly markPlaybackStarted: () => void;
-  readonly playNext: () => void;
-  readonly playPrevious: () => void;
   readonly playTrack: (track: Track) => void;
   readonly setDurationSeconds: (durationSeconds: number) => void;
   readonly setPlaybackError: (message: string | null) => void;
+  readonly setPlaybackMode: (playbackMode: PlaybackMode) => void;
   readonly setPositionSeconds: (positionSeconds: number) => void;
   readonly setVolume: (volume: number) => void;
   readonly toggleMute: () => void;
@@ -49,14 +47,6 @@ const getPlayableQueue = (state: Pick<PlayerStore, "queue" | "library">): readon
   }
 
   return state.library;
-};
-
-const getTrackIndex = (queue: readonly Track[], currentTrack: Track | null): number => {
-  if (!currentTrack) {
-    return -1;
-  }
-
-  return queue.findIndex((track) => track.id === currentTrack.id);
 };
 
 /** 曲库切片：扫描结果与收藏。收藏只是 id 集合，不决定曲库内容。 */
@@ -139,16 +129,6 @@ const createQueueSlice: StateCreator<PlayerStore, [], [], QueueActions> = (set) 
   },
   rebuildQueueFromLibrary: () => {
     set((state) => ({ queue: state.library }));
-  },
-  cyclePlaybackMode: () => {
-    set((state) => ({
-      playbackMode:
-        state.playbackMode === "sequential"
-          ? "repeat-one"
-          : state.playbackMode === "repeat-one"
-            ? "shuffle"
-            : "sequential"
-    }));
   }
 });
 
@@ -185,55 +165,11 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       };
     });
   },
-  playNext: () => {
-    set((state) => {
-      const queue = getPlayableQueue(state);
-      const currentIndex = getTrackIndex(queue, state.currentTrack);
-      const nextIndex = getNextTrackIndex({
-        currentIndex,
-        length: queue.length,
-        mode: state.playbackMode,
-        random: Math.random
-      });
-      const nextTrack = queue[nextIndex];
-
-      if (!nextTrack) {
-        return { status: "idle" as const };
-      }
-
-      return {
-        currentTrack: nextTrack,
-        queue,
-        positionSeconds: 0,
-        durationSeconds: nextTrack.durationSeconds,
-        playbackErrorMessage: null,
-        status: "playing" as const
-      };
-    });
-  },
-  playPrevious: () => {
-    set((state) => {
-      const queue = getPlayableQueue(state);
-      const currentIndex = getTrackIndex(queue, state.currentTrack);
-      const previousIndex = getPreviousTrackIndex(currentIndex, queue.length);
-      const previousTrack = queue[previousIndex];
-
-      if (!previousTrack) {
-        return { status: "idle" as const };
-      }
-
-      return {
-        currentTrack: previousTrack,
-        queue,
-        positionSeconds: 0,
-        durationSeconds: previousTrack.durationSeconds,
-        playbackErrorMessage: null,
-        status: "playing" as const
-      };
-    });
-  },
   setVolume: (volume) => {
     set({ volume: clampVolume(volume) });
+  },
+  setPlaybackMode: (playbackMode) => {
+    set({ playbackMode });
   },
   setPositionSeconds: (positionSeconds) => {
     set({ positionSeconds: Math.max(0, Math.floor(positionSeconds)) });
@@ -254,17 +190,13 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
     set((state) => ({ muted: !state.muted }));
   },
   /**
-   * 播完一首后的行为：
-   * - repeat-one：重播当前曲；
-   * - 顺序模式且已是队列最后一首：停止（不回绕）；
-   * - 其余情况：下一首。
+   * 播完一首后：循环播放重播本曲，播完即停保持暂停；
+   * 不做自动跳曲——一个详情页只负责当前这首歌。
    */
   handleTrackEnded: () => {
     const state = get();
-    const queue = getPlayableQueue(state);
-    const currentIndex = getTrackIndex(queue, state.currentTrack);
 
-    if (queue.length === 0 || currentIndex < 0) {
+    if (!state.currentTrack) {
       return;
     }
 
@@ -273,12 +205,7 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    if (state.playbackMode === "sequential" && currentIndex >= queue.length - 1) {
-      set({ positionSeconds: 0, status: "paused" });
-      return;
-    }
-
-    state.playNext();
+    set({ status: "paused" });
   }
 });
 

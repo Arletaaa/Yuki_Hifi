@@ -49,6 +49,19 @@ const PALETTE = ["#c96f5a", "#8fa7b8", "#31506b", "#8a9a52", "#c8a06a", "#8c6b86
 const tintOf = (id: string): string => PALETTE[getSeedHue(id) % PALETTE.length] ?? PALETTE[0] ?? "#c96f5a";
 const VISIBLE = 7;
 
+/** 越界拖动时的阻尼系数：只跟手 30%，松手后回弹到列表边界。 */
+const rubberBand = (value: number, min: number, max: number): number => {
+  if (value > max) {
+    return max + (value - max) * 0.3;
+  }
+
+  if (value < min) {
+    return min + (value - min) * 0.3;
+  }
+
+  return value;
+};
+
 /** 台面顶面（BASE_Y - 0.26）上方 1.5mm：接触阴影贴片的位置。 */
 const CONTACT_SHADOW_Y = -0.2585;
 
@@ -281,36 +294,33 @@ const Carousel = ({
   const lastScroll = useRef(0);
   const trackRef = useRef<Group>(null);
   const total = groups.length;
-  const length = Math.max(total * GAP, GAP);
-  const loopable = total > VISIBLE;
+  const minOffset = -Math.max(0, total - 1) * GAP;
+  const maxOffset = 0;
 
   const state = useRef({ dragging: false, lastX: 0, offset: 0, target: 0, velocity: 0 });
 
-  // 搜索命中：把目标槽位滑到正中（循环模式走最短方向），不改相机。
+  // 搜索命中：把目标槽位滑到正中，不改相机。
   useEffect(() => {
     if (focusIndex < 0) {
       return;
     }
 
     const pointer = state.current;
-    const desired = -focusIndex * GAP;
+    const desired = MathUtils.clamp(-focusIndex * GAP, minOffset, maxOffset);
 
-    if (loopable) {
-      let delta = desired - pointer.offset;
-      delta = ((delta % length) + length) % length;
-
-      if (delta > length / 2) {
-        delta -= length;
-      }
-
-      pointer.target = pointer.offset + delta;
-    } else {
-      pointer.target = desired;
-    }
-
+    pointer.target = desired;
     pointer.velocity = 0;
     invalidate();
-  }, [focusIndex, focusNonce, invalidate, length, loopable]);
+  }, [focusIndex, focusNonce, invalidate, maxOffset, minOffset]);
+
+  // 曲库数量变化时，把当前位移收敛回可滑动区间。
+  useEffect(() => {
+    const pointer = state.current;
+
+    pointer.offset = MathUtils.clamp(pointer.offset, minOffset, maxOffset);
+    pointer.target = MathUtils.clamp(pointer.target, minOffset, maxOffset);
+    invalidate();
+  }, [invalidate, maxOffset, minOffset]);
 
   useEffect(() => {
     const element = gl.domElement;
@@ -330,7 +340,7 @@ const Carousel = ({
 
       const deltaX = event.clientX - pointer.lastX;
       pointer.lastX = event.clientX;
-      pointer.target += deltaX * 0.006;
+      pointer.target = rubberBand(pointer.target + deltaX * 0.006, minOffset, maxOffset);
       pointer.velocity = deltaX * 0.006;
       invalidate();
     };
@@ -345,7 +355,12 @@ const Carousel = ({
 
     const handleWheel = (event: WheelEvent): void => {
       event.preventDefault();
-      pointer.target += Math.sign(event.deltaY || event.deltaX) * GAP;
+      pointer.target = rubberBand(
+        pointer.target + Math.sign(event.deltaY || event.deltaX) * GAP,
+        minOffset,
+        maxOffset
+      );
+      pointer.velocity = 0;
       invalidate();
     };
 
@@ -362,21 +377,25 @@ const Carousel = ({
       element.removeEventListener("pointercancel", handlePointerUp);
       element.removeEventListener("wheel", handleWheel);
     };
-  }, [gl, invalidate]);
+  }, [gl, invalidate, maxOffset, minOffset]);
 
   useFrame((_frame, delta) => {
     const pointer = state.current;
     const damping = 1 - Math.pow(0.0001, Math.min(delta, 0.1));
 
     if (!pointer.dragging) {
-      // 惯性 + 吸附到最近一张
+      // 惯性 + 吸附到最近一张，并收敛到列表边界内。
       pointer.target += pointer.velocity;
       pointer.velocity *= 0.9;
-      pointer.target = Math.round(pointer.target / GAP) * GAP;
+      pointer.target = MathUtils.clamp(Math.round(pointer.target / GAP) * GAP, minOffset, maxOffset);
     }
 
     if (scrollRef.current !== lastScroll.current) {
-      pointer.target += (scrollRef.current - lastScroll.current) * GAP;
+      pointer.target = MathUtils.clamp(
+        pointer.target + (scrollRef.current - lastScroll.current) * GAP,
+        minOffset,
+        maxOffset
+      );
       lastScroll.current = scrollRef.current;
       invalidate();
     }
@@ -388,8 +407,6 @@ const Carousel = ({
     const track = trackRef.current;
 
     if (track) {
-      const half = length / 2;
-
       for (let index = 0; index < track.children.length; index += 1) {
         const child = track.children[index];
 
@@ -397,12 +414,7 @@ const Carousel = ({
           continue;
         }
 
-        let x = index * GAP + pointer.offset;
-
-        if (loopable) {
-          x = (((x + half) % length) + length) % length - half;
-        }
-
+        const x = index * GAP + pointer.offset;
         child.position.x = x;
         child.visible = Math.abs(x) <= GAP * (VISIBLE + 1);
       }
@@ -417,7 +429,7 @@ const Carousel = ({
     <group>
       <Shelf />
       <group ref={trackRef}>
-        {groups.slice(0, 400).map((group) => (
+        {groups.map((group) => (
           <Disc
             coverPath={group.coverPath}
             highlighted={group.id === highlightedGroupId}
@@ -499,7 +511,6 @@ export const GalleryExperience = ({
 
   const searchFocusIndex = focusGroupId ? groups.findIndex((group) => group.id === focusGroupId) : -1;
   const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
-  const focusIndex = focusGroup ? groups.findIndex((group) => group.id === focusGroup.id) + 1 : 0;
 
   return (
     <>
@@ -606,15 +617,6 @@ export const GalleryExperience = ({
         >
           ›
         </button>
-      </div>
-
-      <div className="gallery-dashes" aria-hidden="true">
-        {Array.from({ length: Math.min(groups.length, 4) }, (_unused, index) => (
-          <span
-            className={`gallery-dashes__item${index === Math.min(focusIndex - 1, 3) ? " is-active" : ""}`}
-            key={`dash-${index}`}
-          />
-        ))}
       </div>
 
       {/* 有当前曲目就显示音量环：详情场景里开始播放后也能直接调音量。 */}

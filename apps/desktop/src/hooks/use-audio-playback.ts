@@ -10,12 +10,18 @@ export const useAudioPlayback = (): void => {
   const status = usePlayerStore((state) => state.status);
   const volume = usePlayerStore((state) => state.volume);
   const muted = usePlayerStore((state) => state.muted);
+  const playbackMode = usePlayerStore((state) => state.playbackMode);
+  const playbackModeRef = useRef(playbackMode);
   const handleTrackEnded = usePlayerStore((state) => state.handleTrackEnded);
   const setPositionSeconds = usePlayerStore((state) => state.setPositionSeconds);
   const setDurationSeconds = usePlayerStore((state) => state.setDurationSeconds);
   const markPlaybackStarted = usePlayerStore((state) => state.markPlaybackStarted);
   const markPlaybackPaused = usePlayerStore((state) => state.markPlaybackPaused);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
+
+  useEffect(() => {
+    playbackModeRef.current = playbackMode;
+  }, [playbackMode]);
 
   useEffect(() => {
     const audio = new Audio();
@@ -31,6 +37,14 @@ export const useAudioPlayback = (): void => {
     };
 
     const handleEnded = (): void => {
+      // 循环播放：ended 后状态仍是 playing，不会触发下面的 effect，需要在事件里直接重播。
+      if (playbackModeRef.current === "repeat-one") {
+        audio.currentTime = 0;
+        void audio.play().catch((error: unknown) => {
+          setPlaybackError(getAudioPlaybackErrorMessage(error));
+        });
+      }
+
       handleTrackEnded();
     };
 

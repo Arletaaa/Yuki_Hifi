@@ -34,6 +34,8 @@ export const VolumeRing = ({ onChange, value }: VolumeRingProps) => {
   const safeValue = clampVolume(value);
   // 连按方向键/滚轮时，事件可能在同一帧内连发；用 ref 保证每次都基于最新值累加。
   const valueRef = useRef(safeValue);
+  // 指针进入过底部缺口：从缺口另一侧出来时不要跨过 0/100。
+  const crossedGapRef = useRef(false);
   const endAngle = START_ANGLE + (safeValue / 100) * SWEEP;
 
   useEffect(() => {
@@ -63,9 +65,22 @@ export const VolumeRing = ({ onChange, value }: VolumeRingProps) => {
       const degrees = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
       const next = volumeFromPointerAngle(degrees, START_ANGLE, SWEEP);
 
-      if (next !== null) {
-        apply(next);
+      if (next === null) {
+        crossedGapRef.current = true;
+        return;
       }
+
+      // 穿过缺口后从另一侧出来时，保持当前边界值，避免 0 ↔ 100 跳变；
+      // 等指针回到当前值附近再重新接管。
+      if (crossedGapRef.current) {
+        if (Math.abs(next - valueRef.current) > 45) {
+          return;
+        }
+
+        crossedGapRef.current = false;
+      }
+
+      apply(next);
     },
     [apply]
   );
@@ -129,6 +144,7 @@ export const VolumeRing = ({ onChange, value }: VolumeRingProps) => {
         setDragging(false);
       }}
       onPointerDown={(event) => {
+        crossedGapRef.current = false;
         event.currentTarget.setPointerCapture(event.pointerId);
         setDragging(true);
         setFromPointer(event.clientX, event.clientY);

@@ -13,6 +13,7 @@ describe("settings merging", () => {
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
+      playbackMode: "stop",
       theme: "light",
       volume: 55
     });
@@ -21,6 +22,7 @@ describe("settings merging", () => {
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
+      playbackMode: "stop",
       scenePreset: defaultScenePreset,
       theme: "light",
       volume: 55
@@ -31,6 +33,7 @@ describe("settings merging", () => {
     const merged = mergeSettings({
       librarySort: "bogus",
       motionTier: "insane",
+      playbackMode: "shuffle",
       theme: "neon",
       volume: 400
     });
@@ -38,6 +41,7 @@ describe("settings merging", () => {
     expect(merged.librarySort).toBe(defaultAppSettings.librarySort);
     expect(merged.theme).toBe(defaultAppSettings.theme);
     expect(merged.motionTier).toBe(defaultAppSettings.motionTier);
+    expect(merged.playbackMode).toBe(defaultAppSettings.playbackMode);
     expect(merged.volume).toBe(100);
   });
 

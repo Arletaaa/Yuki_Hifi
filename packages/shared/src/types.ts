@@ -2,7 +2,7 @@ export type AudioQuality = "unknown" | "lossless" | "lossy" | "hi-res";
 
 export type PlaybackStatus = "idle" | "playing" | "paused";
 
-export type PlaybackMode = "sequential" | "repeat-one" | "shuffle";
+export type PlaybackMode = "repeat-one" | "stop";
 
 /** 曲目信息的来源：读取文件标签，或从文件名推断。 */
 export type MetadataSource = "tags" | "filename";
@@ -63,6 +63,7 @@ export interface AppSettings {
   readonly favorites: readonly string[];
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
+  readonly playbackMode: PlaybackMode;
   readonly theme: ThemeMode;
   readonly volume: number;
   readonly scenePreset: ScenePreset;
@@ -72,6 +73,7 @@ export const defaultAppSettings: AppSettings = {
   favorites: [],
   librarySort: "title",
   motionTier: "standard",
+  playbackMode: "repeat-one",
   theme: "dark",
   volume: 72,
   scenePreset: defaultScenePreset

@@ -52,7 +52,11 @@ export const App = () => {
         try {
           const parsed = JSON.parse(stored) as AppSettings;
           hydrateSettings(parsed);
-          usePlayerStore.setState({ volume: parsed.volume, favorites: parsed.favorites });
+          usePlayerStore.setState({
+            favorites: parsed.favorites,
+            playbackMode: parsed.playbackMode === "stop" ? "stop" : "repeat-one",
+            volume: parsed.volume
+          });
         } catch {
           // 解析失败就保持默认值。
         }
@@ -69,7 +73,11 @@ export const App = () => {
       }
 
       hydrateSettings(settings);
-      usePlayerStore.setState({ volume: settings.volume, favorites: settings.favorites });
+      usePlayerStore.setState({
+        favorites: settings.favorites,
+        playbackMode: settings.playbackMode,
+        volume: settings.volume
+      });
     });
 
     // 曲库以主进程的库清单为准：导入过的文件都在 userData/library 下。
