@@ -355,8 +355,9 @@ const Carousel = ({
 
     const handleWheel = (event: WheelEvent): void => {
       event.preventDefault();
+      // 滚轮向下 / 向右（delta > 0）与向左拖动同向：目标是减小偏移。
       pointer.target = rubberBand(
-        pointer.target + Math.sign(event.deltaY || event.deltaX) * GAP,
+        pointer.target - Math.sign(event.deltaY || event.deltaX) * GAP,
         minOffset,
         maxOffset
       );
