@@ -52,6 +52,12 @@ Desktop.ini
 # 进程文件
 *.pid
 
+# AI agent 本地配置与技能（不入库）
+AGENTS.md
+CLAUDE.md
+.claude/
+.agents/
+skills-lock.json
+
 # Claude Code local overrides (personal preferences, not tracked)
-.claude/settings.local.json
 .refs/
