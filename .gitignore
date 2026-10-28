@@ -18,6 +18,8 @@ test-results/
 # 临时目录（.tmp-build / .tmp-browser / .tmp-esbuild 等）
 .tmp/
 .tmp-*/
+*.tmp
+*.temp
 
 # 本地环境变量
 .env
@@ -31,10 +33,24 @@ test-results/
 Thumbs.db
 Desktop.ini
 ._*
+.history/
+
+# 合并 / 编辑器残留
+*.orig
+*.rej
+*.bak
+
+# 工具缓存
+.cache/
+.eslintcache
+.stylelintcache
 
 # Vite / 测试缓存
 .vite/
 .nyc_output/
+
+# 进程文件
+*.pid
 
 # Claude Code local overrides (personal preferences, not tracked)
 .claude/settings.local.json
