@@ -1,4 +1,5 @@
 import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
+import { isLightPresetId } from "../lib/light-presets";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { DEMO_DIRECTORY, getDemoQuery } from "./demo-params";
@@ -97,6 +98,12 @@ export const installDemoDesktopApi = (): void => {
 
   if (theme === "dark" || theme === "light") {
     useSettingsStore.getState().setTheme(theme);
+  }
+
+  const light = params.get("light");
+
+  if (light && isLightPresetId(light)) {
+    useSettingsStore.getState().setScenePreset({ light });
   }
 
   usePlayerStore.getState().loadLibrary(demoTracks);

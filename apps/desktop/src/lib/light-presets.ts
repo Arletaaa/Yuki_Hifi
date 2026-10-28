@@ -1,4 +1,4 @@
-export const lightPresetIds = ["morning", "night", "spot"] as const;
+export const lightPresetIds = ["morning", "night", "spot", "starry"] as const;
 
 export type LightPresetId = (typeof lightPresetIds)[number];
 

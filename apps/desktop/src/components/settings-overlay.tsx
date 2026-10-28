@@ -36,7 +36,8 @@ const WALL_SWATCHES: readonly Swatch[] = [
 const LIGHT_SWATCHES: readonly Swatch[] = [
   { id: "morning", base: "#f0d7b4" },
   { id: "night", base: "#7fa6c9" },
-  { id: "spot", base: "#fff4e2" }
+  { id: "spot", base: "#fff4e2" },
+  { id: "starry", base: "#26346a" }
 ];
 
 interface GroupProps {
