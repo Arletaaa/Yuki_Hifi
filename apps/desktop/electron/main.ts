@@ -1,4 +1,5 @@
 import electron from "electron";
+import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
@@ -17,7 +18,7 @@ import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./me
 import { collectAudioFilePaths } from "./music-scanner.js";
 import { mergeSettings, readSettings, writeSettings } from "./settings-store.js";
 
-const { app, BrowserWindow, dialog, ipcMain } = electron;
+const { app, BrowserWindow, dialog, ipcMain, shell } = electron;
 
 // 统一 dev / start / 打包产物的 userData；dev 直接跑 main.js 时默认是 %APPDATA%\Electron。
 app.setName("Arlt HiFi Player");
@@ -31,6 +32,8 @@ const loadLibraryChannel = "library:load";
 const renameTrackChannel = "library:rename-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
+const openManageWindowChannel = "library:open-manage-window";
+const openLibraryFolderChannel = "library:open-folder";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
@@ -264,6 +267,59 @@ ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSe
   await writeSettings(app.getPath("userData"), settings);
 
   return settings;
+});
+
+ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
+  const directory = getLibraryDirectory();
+  await mkdir(directory, { recursive: true });
+
+  const errorMessage = await shell.openPath(directory);
+
+  if (errorMessage) {
+    throw new Error(errorMessage);
+  }
+});
+
+let manageWindow: electron.BrowserWindow | null = null;
+
+/** 管理曲库的独立窗口；重复点击只聚焦已有窗口。 */
+const createManageWindow = async (): Promise<void> => {
+  if (manageWindow && !manageWindow.isDestroyed()) {
+    if (manageWindow.isMinimized()) {
+      manageWindow.restore();
+    }
+
+    manageWindow.focus();
+    return;
+  }
+
+  manageWindow = new BrowserWindow({
+    width: 980,
+    height: 760,
+    minWidth: 760,
+    minHeight: 560,
+    backgroundColor: "#0a0d16",
+    title: "管理曲库",
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(currentDir, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  manageWindow.on("closed", () => {
+    manageWindow = null;
+  });
+
+  const entry = devServerUrl ?? appEntryUrl;
+  const manageUrl = new URL(entry);
+  manageUrl.searchParams.set("manage", "1");
+  await manageWindow.loadURL(manageUrl.toString());
+};
+
+ipcMain.handle(openManageWindowChannel, async (): Promise<void> => {
+  await createManageWindow();
 });
 
 const createWindow = async (): Promise<void> => {

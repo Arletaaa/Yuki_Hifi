@@ -59,6 +59,10 @@ export interface ArltHifiDesktopApi {
   readonly setTrackCover: (trackId: string) => Promise<Track | null>;
   /** 删除副本文件并从曲库移除。 */
   readonly deleteTrack: (trackId: string) => Promise<boolean>;
+  /** 在独立窗口中打开曲库管理器。 */
+  readonly openManageWindow: () => Promise<void>;
+  /** 用系统文件管理器打开托管音频目录。 */
+  readonly openLibraryFolder: () => Promise<void>;
   readonly onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void) => () => void;
   readonly loadSettings: () => Promise<AppSettings>;
   readonly saveSettings: (settings: AppSettings) => Promise<AppSettings>;

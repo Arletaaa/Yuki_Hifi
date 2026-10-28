@@ -17,6 +17,8 @@ const loadLibraryChannel = "library:load";
 const renameTrackChannel = "library:rename-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
+const openManageWindowChannel = "library:open-manage-window";
+const openLibraryFolderChannel = "library:open-folder";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
@@ -43,6 +45,12 @@ const desktopApi: ArltHifiDesktopApi = {
   },
   deleteTrack: async (trackId: string): Promise<boolean> => {
     return ipcRenderer.invoke(deleteTrackChannel, trackId) as Promise<boolean>;
+  },
+  openManageWindow: async (): Promise<void> => {
+    await ipcRenderer.invoke(openManageWindowChannel);
+  },
+  openLibraryFolder: async (): Promise<void> => {
+    await ipcRenderer.invoke(openLibraryFolderChannel);
   },
   onLibraryImportProgress: (handler: (progress: LibraryImportProgress) => void): (() => void) => {
     const listener = (_event: unknown, progress: LibraryImportProgress): void => {
