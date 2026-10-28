@@ -15,6 +15,27 @@ test-results/
 # 原始模型素材（不入库，仅本地保留）
 素材/
 
+# 临时目录（.tmp-build / .tmp-browser / .tmp-esbuild 等）
+.tmp/
+.tmp-*/
+
+# 本地环境变量
+.env
+.env.*
+!.env.example
+
+# 编辑器 / 系统文件
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+._*
+
+# Vite / 测试缓存
+.vite/
+.nyc_output/
+
 # Claude Code local overrides (personal preferences, not tracked)
 .claude/settings.local.json
 .refs/
