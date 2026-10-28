@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { clampVolume, volumeFromPointerAngle } from "../lib/volume";
 
 const SIZE = 96;
 const CENTER = SIZE / 2;
@@ -6,8 +7,6 @@ const RADIUS = 38;
 /** 仪表从左上（135°）顺时针扫到右下（405°），留出底部缺口。 */
 const START_ANGLE = 135;
 const SWEEP = 270;
-
-const clampVolume = (value: number): number => Math.max(0, Math.min(100, Math.round(value)));
 
 const polar = (angle: number, radius: number): { x: number; y: number } => {
   const radians = (angle * Math.PI) / 180;
@@ -61,13 +60,12 @@ export const VolumeRing = ({ onChange, value }: VolumeRingProps) => {
       const rect = root.getBoundingClientRect();
       const deltaX = clientX - (rect.left + rect.width / 2);
       const deltaY = clientY - (rect.top + rect.height / 2);
-      let angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+      const degrees = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+      const next = volumeFromPointerAngle(degrees, START_ANGLE, SWEEP);
 
-      if (angle < START_ANGLE) {
-        angle += 360;
+      if (next !== null) {
+        apply(next);
       }
-
-      apply(((angle - START_ANGLE) / SWEEP) * 100);
     },
     [apply]
   );
