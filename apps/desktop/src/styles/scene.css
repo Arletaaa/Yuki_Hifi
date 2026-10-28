@@ -740,75 +740,63 @@
   color: rgba(243, 238, 230, 0.36);
 }
 
-/* ---------- 独立管理窗口 ---------- */
+/* ---------- 叠加的管理弹窗 ---------- */
 
-.manage-window {
-  min-height: 100%;
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 34px 38px 40px;
-  color: #f3eee6;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(120, 90, 70, 0.18), transparent 58%),
-    #080b12;
+.settings-overlay--manage {
+  z-index: 10000;
+  background: rgba(6, 9, 14, 0.38);
+  backdrop-filter: blur(14px) saturate(0.95);
 }
 
-.manage-window__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid rgba(243, 238, 230, 0.12);
+.manage-panel {
+  position: relative;
+  width: min(860px, 88vw);
+  max-height: 86vh;
+  padding: 24px 28px;
+  overflow: auto;
 }
 
-.manage-window__eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: rgba(243, 238, 230, 0.34);
+.manage-dialog {
+  display: grid;
+  gap: 16px;
 }
 
-.manage-window__title {
-  margin: 8px 0 6px;
-  font-size: 26px;
+.manage-dialog__head {
+  display: grid;
+  gap: 4px;
+  padding-right: 36px;
+}
+
+.manage-dialog__title {
+  font-size: 18px;
   font-weight: 500;
   letter-spacing: 0.08em;
 }
 
-.manage-window__meta {
+.manage-dialog__meta {
   font-size: 11px;
   color: rgba(243, 238, 230, 0.45);
 }
 
-.manage-window__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.manage-window__body {
-  margin-top: 22px;
-}
-
-.manage-window .library-manage__list {
-  max-height: calc(100vh - 230px);
+.manage-dialog .library-manage__list {
+  max-height: 48vh;
   padding: 6px;
   border-radius: 14px;
+  background: rgba(8, 11, 18, 0.52);
+  backdrop-filter: blur(4px);
 }
 
-.manage-window .library-manage__row {
-  padding: 10px 12px;
-}
-
-.manage-window__empty {
-  padding: 28px 2px;
-  font-size: 12px;
-  color: rgba(243, 238, 230, 0.45);
+.manage-dialog .library-manage__row {
+  padding: 9px 10px;
 }
 
 .track-manager {
   display: grid;
   gap: 10px;
+}
+
+.manage-dialog__empty {
+  padding: 24px 2px;
+  font-size: 12px;
+  color: rgba(243, 238, 230, 0.45);
 }

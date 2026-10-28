@@ -48,7 +48,7 @@ export const TrackManager = ({
   };
 
   if (tracks.length === 0) {
-    return <p className="manage-window__empty">曲库还是空的，先在设置里导入音乐。</p>;
+    return <p className="manage-dialog__empty">曲库还是空的，先在设置里导入音乐。</p>;
   }
 
   return (

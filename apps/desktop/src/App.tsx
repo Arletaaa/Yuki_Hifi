@@ -92,28 +92,10 @@ export const App = () => {
     };
   }, [hydrateSettings, loadLibrary]);
 
-  // 管理窗口修改/删除曲目后，切回主窗口时刷新曲库，避免画廊显示旧数据。
-  useEffect(() => {
-    const api = window.arltHifiDesktop;
-
-    if (!api) {
-      return;
-    }
-
-    const refresh = (): void => {
-      void api.loadLibrary().then(loadLibrary);
-    };
-
-    window.addEventListener("focus", refresh);
-
-    return () => {
-      window.removeEventListener("focus", refresh);
-    };
-  }, [loadLibrary]);
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
+      // 管理弹窗叠在设置上时，Esc 只关管理弹窗，设置保持打开。
+      if (event.key === "Escape" && !document.querySelector(".settings-overlay--manage")) {
         setSettingsOpen(false);
       }
     };

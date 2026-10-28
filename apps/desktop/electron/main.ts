@@ -32,7 +32,6 @@ const loadLibraryChannel = "library:load";
 const renameTrackChannel = "library:rename-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
-const openManageWindowChannel = "library:open-manage-window";
 const openLibraryFolderChannel = "library:open-folder";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
@@ -278,48 +277,6 @@ ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
   if (errorMessage) {
     throw new Error(errorMessage);
   }
-});
-
-let manageWindow: electron.BrowserWindow | null = null;
-
-/** 管理曲库的独立窗口；重复点击只聚焦已有窗口。 */
-const createManageWindow = async (): Promise<void> => {
-  if (manageWindow && !manageWindow.isDestroyed()) {
-    if (manageWindow.isMinimized()) {
-      manageWindow.restore();
-    }
-
-    manageWindow.focus();
-    return;
-  }
-
-  manageWindow = new BrowserWindow({
-    width: 980,
-    height: 760,
-    minWidth: 760,
-    minHeight: 560,
-    backgroundColor: "#0a0d16",
-    title: "管理曲库",
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(currentDir, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  manageWindow.on("closed", () => {
-    manageWindow = null;
-  });
-
-  const entry = devServerUrl ?? appEntryUrl;
-  const manageUrl = new URL(entry);
-  manageUrl.searchParams.set("manage", "1");
-  await manageWindow.loadURL(manageUrl.toString());
-};
-
-ipcMain.handle(openManageWindowChannel, async (): Promise<void> => {
-  await createManageWindow();
 });
 
 const createWindow = async (): Promise<void> => {

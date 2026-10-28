@@ -4,6 +4,7 @@ import { getDesktopErrorMessage } from "../lib/desktop-error";
 import { librarySortOptions } from "../lib/library-filter";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
+import { ManageOverlay } from "./manage-overlay";
 
 interface Swatch {
   readonly base: string;
@@ -90,25 +91,21 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const setLibrarySort = useSettingsStore((state) => state.setLibrarySort);
   const { busy, importFiles, importFolder, state: importState } = useLibraryImport();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const progressLabel = importState.progress
     ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
     : "正在导入…";
 
-  const runDesktopAction = async (action: "manage" | "folder"): Promise<void> => {
+  const openLibraryFolder = async (): Promise<void> => {
     const api = window.arltHifiDesktop;
 
     if (!api) {
-      setActionError("网页预览没有桌面窗口，请使用 Electron 桌面应用。");
+      setActionError("网页预览没有音频目录，请使用 Electron 桌面应用。");
       return;
     }
 
     try {
-      if (action === "manage") {
-        await api.openManageWindow();
-      } else {
-        await api.openLibraryFolder();
-      }
-
+      await api.openLibraryFolder();
       setActionError(null);
     } catch (caught) {
       setActionError(getDesktopErrorMessage(caught));
@@ -116,68 +113,69 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   };
 
   return (
-    <div className="settings-overlay__inner">
-      <button aria-label="关闭设置" className="settings-overlay__close" onClick={onClose} type="button">
-        ✕
-      </button>
+    <>
+      <div className="settings-overlay__inner">
+        <button aria-label="关闭设置" className="settings-overlay__close" onClick={onClose} type="button">
+          ✕
+        </button>
 
-      <section aria-label="音乐库" className="library-import">
-        <div className="library-import__head">
-          <p className="preset-group__label">音乐库</p>
-          <p className="library-import__count">{library.length} 首已托管</p>
-        </div>
-        <div className="library-import__actions">
-          <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
-            选择音频文件
-          </button>
-          <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
-            导入文件夹
-          </button>
-          <button className="library-import__button" onClick={() => void runDesktopAction("manage")} type="button">
-            管理歌曲
-          </button>
-          <button className="library-import__button" onClick={() => void runDesktopAction("folder")} type="button">
-            打开音频文件夹
-          </button>
-          {busy ? (
-            <span aria-live="polite" className="library-import__status">
-              {progressLabel}
-            </span>
-          ) : null}
-        </div>
-        {!busy && importState.message ? (
-          <p
-            className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
-            role="status"
-          >
-            {importState.message}
-          </p>
-        ) : null}
-        {actionError ? (
-          <p className="library-import__status is-error" role="alert">
-            {actionError}
-          </p>
-        ) : null}
-
-        <div className="library-sort">
-          <p className="preset-group__label">排序</p>
-          <div className="library-sort__options" role="group" aria-label="曲库排序">
-            {librarySortOptions.map((option) => (
-              <button
-                aria-pressed={option.value === librarySort}
-                className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
-                key={option.value}
-                onClick={() => {
-                  setLibrarySort(option.value);
-                }}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
+        <section aria-label="音乐库" className="library-import">
+          <div className="library-import__head">
+            <p className="preset-group__label">音乐库</p>
+            <p className="library-import__count">{library.length} 首已托管</p>
           </div>
-        </div>
-      </section>
+          <div className="library-import__actions">
+            <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
+              选择音频文件
+            </button>
+            <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
+              导入文件夹
+            </button>
+            <button className="library-import__button" onClick={() => { setManageOpen(true); }} type="button">
+              管理歌曲
+            </button>
+            <button className="library-import__button" onClick={() => void openLibraryFolder()} type="button">
+              打开音频文件夹
+            </button>
+            {busy ? (
+              <span aria-live="polite" className="library-import__status">
+                {progressLabel}
+              </span>
+            ) : null}
+          </div>
+          {!busy && importState.message ? (
+            <p
+              className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
+              role="status"
+            >
+              {importState.message}
+            </p>
+          ) : null}
+          {actionError ? (
+            <p className="library-import__status is-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
+
+          <div className="library-sort">
+            <p className="preset-group__label">排序</p>
+            <div className="library-sort__options" role="group" aria-label="曲库排序">
+              {librarySortOptions.map((option) => (
+                <button
+                  aria-pressed={option.value === librarySort}
+                  className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
+                  key={option.value}
+                  onClick={() => {
+                    setLibrarySort(option.value);
+                  }}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
       <div className="preset-pair">
         <SwatchGroup items={TABLE_SWATCHES} label="台面" onChange={(id) => { setScenePreset({ table: id }); }} value={scenePreset.table} />
@@ -233,6 +231,15 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
       </div>
 
       <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>
-    </div>
+      </div>
+
+      {manageOpen ? (
+        <ManageOverlay
+          onClose={() => {
+            setManageOpen(false);
+          }}
+        />
+      ) : null}
+    </>
   );
 };

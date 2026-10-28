@@ -6,7 +6,7 @@
 | --- | --- |
 | 主界面 | 3D 画廊 + 详情 + 设置浮层；画廊滑动限制在 CD 列表内，越界 30% 阻尼并自动回弹；旧 rail / player-bar / 列表页 / 队列页 / 播放台、壁纸与主题页**已全部删除** |
 | 顶栏 | 搜索框（标题/艺术家/专辑近似匹配）+ 结果浮层（最多 8 条，↑↓/Enter/Esc），点击飞到对应 CD |
-| 设置 | 全透明浮层（Portal 到 body）：音乐库导入 + 排序 + **管理歌曲（独立窗口）** + 材质球 + 三档光效 + 播放模式 + 音量 + 版权；间距已放宽 |
+| 设置 | 全透明浮层（Portal 到 body）：音乐库导入 + 排序 + **管理歌曲（叠加弹窗）** + 材质球 + 三档光效 + 播放模式 + 音量 + 版权；间距已放宽 |
 | 曲库 | **软件托管**：导入即复制到 `userData/library/<artist>/<album>/<title>.<ext>`，`userData/library.json` 是唯一真源；三元组去重、封面进 `userData/covers`；支持排序 / 重命名 / 设封面 / 删除 |
 | 播放 | **循环播放 / 播完即停**两种模式，不做自动跳曲；有当前曲目时右下角显示音量环（拖拽 / 滚轮 / 键盘，ARIA slider + 读数）；HTMLAudioElement 播放链路保留 |
 | 场景预设 | `scenePreset { table, base, wall, light }` 已写入 `settings.json`，台面 / 台底 / 墙面 / **光效**全部**实时驱动**；剪影已删除 |
@@ -188,12 +188,13 @@
 - 画廊去掉无限循环：offset 限制在 `[-(n-1)*GAP, 0]`；越界拖动只有 30% 跟手，松手吸附并平滑回弹；不再取模、不再渲染 400 张。
 - 验证：CDP 拖拽到最左后停在最后一张（小曲库 3 张也不扩散）；设置里切换模式时 `aria-pressed` 与 store 同步；音量环 0/100 穿越缺口不再跳变。
 
-## 曲库管理独立窗口（2026-10-28）
+## 曲库管理叠加弹窗（2026-10-28）
 
-- 设置里不再内嵌曲目列表；「管理歌曲」通过 `library:open-manage-window` 打开独立 `BrowserWindow`（单例，重复点击只聚焦），入口 `?manage=1`，复用同一 preload / React 入口。
-- 管理窗口：读取 manifest，行内重命名 / 设封面 / 删除（二次确认），修改后自动重新读取；顶部有「打开音频文件夹」「刷新」。网页预览用 `?demo=1&manage=1` 可看 14 条示例曲目。
-- 新增 `library:open-folder`：`mkdir` 后 `shell.openPath(userData/library)`；设置和管理窗口都有按钮，网页预览会提示改用桌面应用。
-- 验证：Electron 实测 `openManageWindow()` 产生第二个窗口（标题「管理曲库」、URL `?manage=1`），列表读取 `userData/library`；设置按钮行显示四个入口。
+- 「管理歌曲」不新开系统窗口，而是在设置浮层之上再叠一个同风格弹窗：设置保持打开，叠加层自己再应用一次 `backdrop-filter: blur(14px)` + 0.38 遮罩，形成第二层虚化。
+- 弹窗通过 portal 挂到 body，`z-index: 10000`；内容为标题/数量 + 打开音频文件夹/刷新 + TrackManager 列表（重命名 / 封面 / 删除），列表区域加半透明底保证可读。
+- 关闭按钮、Esc、点击弹窗背景都只关闭管理弹窗，设置保持打开（App 的 Esc 处理会避开管理弹窗）。
+- 新增 `library:open-folder`：`mkdir` 后 `shell.openPath(userData/library)`；设置弹窗和管理弹窗都有按钮，网页预览提示改用桌面应用。
+- 验证：CDP 检查两层 `.settings-overlay`、管理层 `z-index: 10000` 与 `blur(14px)`；关闭/Esc/背景点击后设置仍在；14 条示例曲目正常显示。
 
 ## 未解决
 

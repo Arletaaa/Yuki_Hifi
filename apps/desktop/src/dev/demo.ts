@@ -67,11 +67,6 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   renameTrack: rejectWebPreviewManage,
   setTrackCover: rejectWebPreviewManage,
   deleteTrack: rejectWebPreviewManage,
-  openManageWindow: async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("manage", "1");
-    window.open(url.toString(), "_blank", "popup=yes,width=980,height=760");
-  },
   openLibraryFolder: rejectWebPreviewManage,
   onLibraryImportProgress: () => () => {},
   loadSettings: async () => ({ ...defaultAppSettings }),
