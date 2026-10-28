@@ -1,6 +1,6 @@
 # Arlt HiFi Player Roadmap
 
-> 阶段与 `docs/workflow/rebuild-workflow.md` 一一对应。每完成一个阶段更新勾选。
+> 每完成一个阶段更新勾选。
 
 ## 已完成
 

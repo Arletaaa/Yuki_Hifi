@@ -58,9 +58,7 @@ pnpm build
 - `packages/agent-harness`：任务模板和工程约束
 - `docs/product`：产品愿景、MVP、场景规格与路线图
 - `docs/decisions`：架构决策记录（ADR）
-- `docs/workflow`：交付工作流与阶段门禁
-- `docs/prompts`：可复用提示词
-- `docs/evals`：评测设计
+- `docs/workflow`：交接记录与阶段验收
 - `fixtures/audio`：音频测试样本占位说明
 - `fixtures/visuals`：视觉资源占位说明
 
