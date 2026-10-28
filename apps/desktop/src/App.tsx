@@ -92,6 +92,25 @@ export const App = () => {
     };
   }, [hydrateSettings, loadLibrary]);
 
+  // 管理窗口修改/删除曲目后，切回主窗口时刷新曲库，避免画廊显示旧数据。
+  useEffect(() => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      return;
+    }
+
+    const refresh = (): void => {
+      void api.loadLibrary().then(loadLibrary);
+    };
+
+    window.addEventListener("focus", refresh);
+
+    return () => {
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadLibrary]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {

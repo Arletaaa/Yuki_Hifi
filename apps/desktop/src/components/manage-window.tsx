@@ -38,6 +38,19 @@ export const ManageWindow = () => {
     void reload();
   }, [reload]);
 
+  // 从主窗口切回来时重新读一次，导入/删除后列表不会过期。
+  useEffect(() => {
+    const refresh = (): void => {
+      void reload();
+    };
+
+    window.addEventListener("focus", refresh);
+
+    return () => {
+      window.removeEventListener("focus", refresh);
+    };
+  }, [reload]);
+
   const runManage = async (action: () => Promise<boolean>): Promise<boolean> => {
     const changed = await action();
 
