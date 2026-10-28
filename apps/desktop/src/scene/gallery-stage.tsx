@@ -16,6 +16,13 @@ import { useSettingsStore } from "../store/settings-store";
 import { usePlayerStore } from "../store/player-store";
 import { VolumeRing } from "../components/volume-ring";
 import { LightEffects, SceneLighting } from "./light-effects";
+import {
+  ENTER_SECONDS,
+  RETURN_SECONDS,
+  cameraPose,
+  clamp01
+} from "./scene-transition";
+import type { ScenePhase } from "./scene-transition";
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -34,6 +41,57 @@ const ProceduralEnvironment = () => {
       generator.dispose();
     };
   }, [gl, scene]);
+
+  return null;
+};
+
+interface CameraRigProps {
+  readonly onEntered: () => void;
+  readonly onReturned: () => void;
+  readonly phase: ScenePhase;
+  readonly startedAt: number;
+}
+
+/** 唯一相机的时间轴：陈列 → 交互、交互 → 陈列。 */
+const CameraRig = ({ onEntered, onReturned, phase, startedAt }: CameraRigProps) => {
+  const camera = useThree((state) => state.camera);
+  const entered = useRef(false);
+  const returned = useRef(false);
+
+  useFrame(() => {
+    const now = performance.now();
+    let progress = 0;
+
+    if (phase === "entering") {
+      progress = clamp01((now - startedAt) / 1000 / ENTER_SECONDS);
+    } else if (phase === "returning") {
+      progress = clamp01((now - startedAt) / 1000 / RETURN_SECONDS);
+    } else if (phase !== "gallery") {
+      progress = 1;
+    }
+
+    const pose = cameraPose(phase, progress);
+    camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+    camera.lookAt(pose.target[0], pose.target[1], pose.target[2]);
+
+    if (phase === "entering" && progress >= 1 && !entered.current) {
+      entered.current = true;
+      onEntered();
+    }
+
+    if (phase !== "entering") {
+      entered.current = false;
+    }
+
+    if (phase === "returning" && progress >= 1 && !returned.current) {
+      returned.current = true;
+      onReturned();
+    }
+
+    if (phase !== "returning") {
+      returned.current = false;
+    }
+  });
 
   return null;
 };
@@ -159,7 +217,7 @@ const WallSurface = () => {
     map.anisotropy = 8;
     map.wrapS = RepeatWrapping;
     map.wrapT = RepeatWrapping;
-    map.repeat.set(26, 2.2);
+    map.repeat.set(26, 3.55);
     map.colorSpace = SRGBColorSpace;
     map.needsUpdate = true;
   }, [map]);
@@ -175,10 +233,13 @@ const WallSurface = () => {
 };
 
 
-/** 只有一面墙（详情场景用）。 */
+/**
+ * 唯一的一面墙：陈列与交互共用，全程不消失。
+ * 加高到 5.5m 是为了交互机位（z=6.2，仰视到 y=3.2）也在墙内，不露出墙顶外的空背景。
+ */
 const BackWall = () => (
-  <mesh position={[0, BASE_Y + 0.55, -0.34]} receiveShadow>
-    <boxGeometry args={[40, 3.4, 0.08]} />
+  <mesh position={[0, 2.9, -0.34]} receiveShadow>
+    <boxGeometry args={[40, 5.5, 0.08]} />
     <WallSurface />
   </mesh>
 );
@@ -248,11 +309,6 @@ const Shelf = () => (
       <boxGeometry args={[40, 1.2, 0.08]} />
       <CabinetSurface />
     </mesh>
-    {/* 背墙 */}
-    <mesh position={[0, BASE_Y + 0.55, -0.34]} receiveShadow>
-      <boxGeometry args={[40, 3.4, 0.08]} />
-      <WallSurface />
-    </mesh>
   </group>
 );
 
@@ -276,7 +332,9 @@ const Carousel = ({
   currentGroupId,
   focusIndex,
   focusNonce,
+  hiddenGroupId,
   highlightedGroupId,
+  interactive,
   onHover,
   onOpen,
   scrollRef
@@ -285,9 +343,11 @@ const Carousel = ({
   readonly focusIndex: number;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
+  readonly hiddenGroupId: string | null;
   readonly highlightedGroupId: string | null;
+  readonly interactive: boolean;
   readonly onHover: (label: string | null) => void;
-  readonly onOpen: (group: GalleryGroup) => void;
+  readonly onOpen: (group: GalleryGroup, slotX: number) => void;
   readonly scrollRef: { current: number };
 }) => {
   const { gl, invalidate } = useThree();
@@ -327,6 +387,10 @@ const Carousel = ({
     const pointer = state.current;
 
     const handlePointerDown = (event: PointerEvent): void => {
+      if (!interactive) {
+        return;
+      }
+
       pointer.dragging = true;
       pointer.lastX = event.clientX;
       pointer.velocity = 0;
@@ -334,7 +398,7 @@ const Carousel = ({
     };
 
     const handlePointerMove = (event: PointerEvent): void => {
-      if (!pointer.dragging) {
+      if (!interactive || !pointer.dragging) {
         return;
       }
 
@@ -354,8 +418,11 @@ const Carousel = ({
     };
 
     const handleWheel = (event: WheelEvent): void => {
+      if (!interactive) {
+        return;
+      }
+
       event.preventDefault();
-      // 滚轮向下 / 向右（delta > 0）与向左拖动同向：目标是减小偏移。
       pointer.target = rubberBand(
         pointer.target - Math.sign(event.deltaY || event.deltaX) * GAP,
         minOffset,
@@ -378,7 +445,7 @@ const Carousel = ({
       element.removeEventListener("pointercancel", handlePointerUp);
       element.removeEventListener("wheel", handleWheel);
     };
-  }, [gl, invalidate, maxOffset, minOffset]);
+  }, [gl, interactive, invalidate, maxOffset, minOffset]);
 
   useFrame((_frame, delta) => {
     const pointer = state.current;
@@ -415,9 +482,12 @@ const Carousel = ({
           continue;
         }
 
+        const group = groups[index];
+        const selected = group?.id === hiddenGroupId;
         const x = index * GAP + pointer.offset;
+
         child.position.x = x;
-        child.visible = Math.abs(x) <= GAP * (VISIBLE + 1);
+        child.visible = !selected && Math.abs(x) <= GAP * (VISIBLE + 1);
       }
     }
 
@@ -430,7 +500,7 @@ const Carousel = ({
     <group>
       <Shelf />
       <group ref={trackRef}>
-        {groups.map((group) => (
+        {groups.map((group, index) => (
           <Disc
             coverPath={group.coverPath}
             highlighted={group.id === highlightedGroupId}
@@ -441,7 +511,9 @@ const Carousel = ({
               onHover(`${group.artist} · ${group.title}`);
             }}
             onSelect={() => {
-              onOpen(group);
+              if (interactive) {
+                onOpen(group, index * GAP + state.current.offset);
+              }
             }}
             position={[0, BASE_Y, 0]}
             rotationY={0}
@@ -473,6 +545,9 @@ export const GalleryExperience = ({
 }: GalleryExperienceProps) => {
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
+  const [phase, setPhase] = useState<ScenePhase>("gallery");
+  const [selectedSlotX, setSelectedSlotX] = useState(0);
+  const [startedAt, setStartedAt] = useState(0);
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
   const scrollRef = useRef(0);
   const volume = usePlayerStore((state) => state.volume);
@@ -489,6 +564,7 @@ export const GalleryExperience = ({
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("detail") === "1" && groups.length > 1) {
       setDetailGroup(groups[1] ?? null);
+      setPhase("detail");
     }
   }, [groups]);
 
@@ -499,6 +575,8 @@ export const GalleryExperience = ({
     }
 
     setDetailGroup(null);
+    setPhase("gallery");
+    setSelectedSlotX(0);
     setHighlightedGroupId(focusGroupId);
 
     const timer = window.setTimeout(() => {
@@ -512,6 +590,39 @@ export const GalleryExperience = ({
 
   const searchFocusIndex = focusGroupId ? groups.findIndex((group) => group.id === focusGroupId) : -1;
   const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
+
+  const handleOpen = (group: GalleryGroup, slotX: number): void => {
+    if (phase !== "gallery") {
+      return;
+    }
+
+    setDetailGroup(group);
+    setSelectedSlotX(slotX);
+    setStartedAt(performance.now());
+    setPhase("entering");
+    setHoverLabel(null);
+  };
+
+  const handleEntered = (): void => {
+    setPhase("detail");
+  };
+
+  const handleBack = (): void => {
+    if (phase === "detail") {
+      setPhase("closing");
+    }
+  };
+
+  const handleClosed = (): void => {
+    setStartedAt(performance.now());
+    setPhase("returning");
+  };
+
+  const handleReturned = (): void => {
+    setPhase("gallery");
+    setDetailGroup(null);
+    setSelectedSlotX(0);
+  };
 
   return (
     <>
@@ -529,30 +640,29 @@ export const GalleryExperience = ({
         <FrameProbe />
         <SceneLighting variant={lightVariant} />
         <LightEffects variant={lightVariant} />
-
-  
-      {!detailGroup ? (
-          <Carousel
-            currentGroupId={currentGroupId}
-            focusIndex={searchFocusIndex}
-            focusNonce={focusNonce}
-            groups={groups}
-            highlightedGroupId={highlightedGroupId}
-            onHover={setHoverLabel}
-            scrollRef={scrollRef}
-            onOpen={(group) => {
-              setDetailGroup(group);
-              setHoverLabel(null);
-            }}
-          />
-        ) : null}
-
-        {detailGroup ? (
-          <BackWall />
-        ) : null}
-        {detailGroup ? (
+        <CameraRig
+          onEntered={handleEntered}
+          onReturned={handleReturned}
+          phase={phase}
+          startedAt={startedAt}
+        />
+        <BackWall />
+        <Carousel
+          currentGroupId={currentGroupId}
+          focusIndex={searchFocusIndex}
+          focusNonce={focusNonce}
+          groups={groups}
+          hiddenGroupId={detailGroup?.id ?? null}
+          highlightedGroupId={highlightedGroupId}
+          interactive={phase === "gallery"}
+          onHover={setHoverLabel}
+          onOpen={handleOpen}
+          scrollRef={scrollRef}
+        />
+        {detailGroup && phase !== "gallery" ? (
           <CaseDetail
             coverPath={detailGroup.coverPath}
+            onClosed={handleClosed}
             onPlay={() => {
               const firstTrack = tracks.find((track) => track.id === detailGroup.trackIds[0]);
 
@@ -560,18 +670,19 @@ export const GalleryExperience = ({
                 onPlayTrack(firstTrack);
               }
             }}
+            phase={phase}
+            slotX={selectedSlotX}
+            startedAt={startedAt}
             tint={tintOf(detailGroup.id)}
           />
         ) : null}
       </Canvas>
 
-      {detailGroup ? (
+      {detailGroup && phase === "detail" ? (
         <button
           aria-label="返回展厅"
           className="gallery-detail__back"
-          onClick={() => {
-            setDetailGroup(null);
-          }}
+          onClick={handleBack}
           type="button"
         >
           ←
@@ -597,28 +708,30 @@ export const GalleryExperience = ({
         </p>
       </div>
 
-      <div className="gallery-open">
-        <button
-          aria-label="上一张"
-          className="gallery-open__arrow"
-          onClick={() => {
-            scrollRef.current += 1;
-          }}
-          type="button"
-        >
-          ‹
-        </button>
-        <button
-          aria-label="下一张"
-          className="gallery-open__arrow"
-          onClick={() => {
-            scrollRef.current -= 1;
-          }}
-          type="button"
-        >
-          ›
-        </button>
-      </div>
+      {phase === "gallery" ? (
+        <div className="gallery-open">
+          <button
+            aria-label="上一张"
+            className="gallery-open__arrow"
+            onClick={() => {
+              scrollRef.current += 1;
+            }}
+            type="button"
+          >
+            ‹
+          </button>
+          <button
+            aria-label="下一张"
+            className="gallery-open__arrow"
+            onClick={() => {
+              scrollRef.current -= 1;
+            }}
+            type="button"
+          >
+            ›
+          </button>
+        </div>
+      ) : null}
 
       {/* 有当前曲目就显示音量环：详情场景里开始播放后也能直接调音量。 */}
       {currentTrack ? <VolumeRing onChange={setVolume} value={volume} /> : null}

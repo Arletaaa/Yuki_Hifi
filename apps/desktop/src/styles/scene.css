@@ -209,18 +209,6 @@
 
 /* ---------- CD 详情场景 ---------- */
 
-.gallery-transition-veil {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  opacity: 0;
-  pointer-events: none;
-  background-color: #2a1916;
-  background-position: center;
-  background-size: cover;
-  will-change: opacity;
-}
-
 .gallery-detail__back {
   position: absolute;
   top: 96px;
