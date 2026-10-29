@@ -1,6 +1,20 @@
-# 交接状态（2026-10-27 收口 · 第六轮）
+# 交接状态（2026-10-30 收口 · 第七轮）
 
-## 这一阶段的成果
+## 最新进展（2026-10-28 → 10-30）
+
+| 日期 | 进展 |
+| --- | --- |
+| 10-28 | CD 开盒/盘片拖出转场；星空光效；曲库管理独立窗口 → 叠加弹窗；音量环归零与画廊边界修复 |
+| 10-29 | 唱片机素材拆件（Deck/Platter/Tonearm/StartStop + 双灯）、1K 贴图、6.18 MB GLB；`turntable-interaction.ts` / `turntable.tsx` / `case-detail.tsx` 接入 |
+| 10-30 | commit `79dd69d`：CD 吸附/弹出、Start/Stop 起停转、唱臂落针播放、双灯、播完即停、返回合盒、CC-BY 署名 |
+
+- **真机**：2026-10-30 用户在真实桌面启动并跑过主流程，确认正常。
+- **门禁**：`pnpm typecheck` 四个 workspace 项目复跑通过；`dist` / `dist-electron` 产物时间为 10-29 23:55。
+- **未复跑**：最新提交后的 `pnpm test` / `pnpm build`（受限会话里 esbuild `spawn EPERM`）；`electron-builder` 安装包从未实际构建。
+- **文档**：README / roadmap / 唱片机文档已同步；v1.0 剩余项与待决见 [next-steps](../product/next-steps.md)。
+- **注意**：10-28 的“切回窗口刷新曲库”在改为叠加弹窗时被移除，当前只在启动、导入、管理操作后重新 `loadLibrary`。
+
+## 这一阶段的成果（2026-10-27 快照）
 
 | 领域 | 状态 |
 | --- | --- |
@@ -196,7 +210,10 @@
 - 新增 `library:open-folder`：`mkdir` 后 `shell.openPath(userData/library)`；设置弹窗和管理弹窗都有按钮，网页预览提示改用桌面应用。
 - 验证：CDP 检查两层 `.settings-overlay`、管理层 `z-index: 10000` 与 `blur(14px)`；关闭/Esc/背景点击后设置仍在；14 条示例曲目正常显示。
 
-## 未解决
+## 未解决（2026-10-27 快照）
+
+> 以下清单是 10-27 的记录。唱片机接入后，部分条目已处理或性质变化；
+> 最新缺口、优先级与待决事项见 [next-steps](../product/next-steps.md)。
 
 ### 1. 技术债
 
@@ -209,11 +226,11 @@
 - 导入是串行逐文件处理，没有取消；几百首的文件夹会占用 UI（有进度但没有停止按钮）。
 - 设置面板的「光效」目前用 Canvas 贴图 + 叠加平面模拟（光柱/光斑/光池），不是真正的体积光；聚光灯参数在 `scene/light-effects.tsx` 顶部常量里调。
 - `gallery-stage.tsx` 仍有 600+ 行，混了相机、货架、CD、详情、光效、搜索飞行、音量环，建议拆 `scene/shelf.tsx`、`scene/carousel.tsx`、`scene/stage.tsx`。
-- 详情场景的盘片自转仍缺（转动整个 `CD_1` 会让盘片侧翻，需要单独转 `Object_13` 的局部法线轴）。
+- 详情场景的盘片自转：10-30 已由唱片机转盘带动 CD 旋转，原限制解除。
 - 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；且 demo API 存在时 `useSaveSettings` 走 demo 的 `saveSettings`，preview 实际不写 localStorage。
 - `?merge=1` 的网格合并路径保留但默认关闭，未验证收益。
 - 收藏（favorites）没有切换入口与外观；store / 设置里的数据目前只能被动保存。
-- `electron-builder` 打包从未实际执行；本机 Electron 窗口也无法创建，窗口级验证仍待真实桌面。
+- `electron-builder` 打包从未实际执行；开发版真实桌面已由用户于 10-30 确认，装包版仍需验证。
 - `packages/ui` 的组件与 `shared` 的部分格式化函数暂无调用方（见"保留"）。
 
 ### 2. 后续方向
@@ -226,16 +243,23 @@
 4. 键盘可达性与无 WebGL 时的降级视图。
 5. 组件级测试、Electron 打包冒烟与真机帧率验证。
 
+最新优先级、验收标准与待决项已整理到 [next-steps](../product/next-steps.md)。
+
 ## 验收命令
 
 ```powershell
-pnpm typecheck          # 三个 tsconfig 全绿
-pnpm test               # desktop 104 + shared 11 + harness 6
+pnpm typecheck          # 四个 workspace 项目全绿（desktop 两个 tsconfig + ui + shared + harness）
+pnpm test               # desktop 122 + shared 11 + harness 6（静态统计 139；最新提交后待复跑）
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
 pnpm dev                # Vite + Electron（首次会按需把运行时复制到 LOCALAPPDATA）
 pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-debugging-port=9224
 ```
+
+2026-10-30 验收补充：
+
+- `pnpm typecheck` 已复跑通过；`pnpm test` / `pnpm build` 待在非受限环境复跑。
+- 用户在真实桌面启动并跑过主流程，确认正常；装包版（electron-builder）仍未构建。
 
 本机环境提示（DSH 沙箱下）：
 
