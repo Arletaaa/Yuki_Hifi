@@ -231,7 +231,9 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
         </div>
       </div>
 
-      <p className="settings-overlay__credit">"CD Jewel Case" by 蓝人组合 · CC-BY 4.0</p>
+      <p className="settings-overlay__credit">
+        "CD Jewel Case" by 蓝人组合 · CC-BY 4.0 · "CD player" by nguyentrongtam0512 · CC-BY 4.0
+      </p>
       </div>
 
       {manageOpen ? (

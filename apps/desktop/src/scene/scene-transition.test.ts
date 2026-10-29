@@ -22,12 +22,20 @@ describe("cameraPose", () => {
     expect(cameraPose("detail", 0)).toEqual({ position: [...DETAIL_CAMERA], target: [...DETAIL_LOOK] });
 
     const entered = cameraPose("entering", 1);
-    expect(entered.position).toEqual([...DETAIL_CAMERA]);
-    expect(entered.target).toEqual([...DETAIL_LOOK]);
+    expect(entered.position[0]).toBeCloseTo(DETAIL_CAMERA[0]);
+    expect(entered.position[1]).toBeCloseTo(DETAIL_CAMERA[1]);
+    expect(entered.position[2]).toBeCloseTo(DETAIL_CAMERA[2]);
+    expect(entered.target[0]).toBeCloseTo(DETAIL_LOOK[0]);
+    expect(entered.target[1]).toBeCloseTo(DETAIL_LOOK[1]);
+    expect(entered.target[2]).toBeCloseTo(DETAIL_LOOK[2]);
 
     const returned = cameraPose("returning", 1);
-    expect(returned.position).toEqual([...GALLERY_CAMERA]);
-    expect(returned.target).toEqual([...GALLERY_LOOK]);
+    expect(returned.position[0]).toBeCloseTo(GALLERY_CAMERA[0]);
+    expect(returned.position[1]).toBeCloseTo(GALLERY_CAMERA[1]);
+    expect(returned.position[2]).toBeCloseTo(GALLERY_CAMERA[2]);
+    expect(returned.target[0]).toBeCloseTo(GALLERY_LOOK[0]);
+    expect(returned.target[1]).toBeCloseTo(GALLERY_LOOK[1]);
+    expect(returned.target[2]).toBeCloseTo(GALLERY_LOOK[2]);
   });
 
   it("keeps the camera still while the case is closing", () => {

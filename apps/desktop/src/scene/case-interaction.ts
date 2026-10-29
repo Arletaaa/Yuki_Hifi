@@ -27,7 +27,7 @@ export const DISC_SNAP_RADIUS_RATIO = 0.2;
  */
 export const DISC_DOWN_RANGE = 1.35;
 export const DISC_UP_RANGE = 1.35;
-export const DISC_RIGHT_RANGE = 2.0;
+export const DISC_RIGHT_RANGE = 2.4;
 
 /** 悬停/回位使用不同的阻尼，产生"先快后慢"的变速感。 */
 export const DISC_HOVER_LAMBDA = 9;

@@ -8,6 +8,13 @@ const GalleryExperience = lazy(() =>
   import("./gallery-stage").then((module) => ({ default: module.GalleryExperience }))
 );
 
+const SceneLoading = () => (
+  <div aria-live="polite" className="scene-stage__loading">
+    <span aria-hidden="true" className="scene-stage__loading-disc" />
+    <p className="scene-stage__loading-copy">Loading collection</p>
+  </div>
+);
+
 export interface SceneStageProps {
   readonly currentTrackId: string | null;
   readonly focusGroupId: string | null;
@@ -35,7 +42,7 @@ export const SceneStage = ({
     <div className="scene-stage">
       <div className="scene-stage__viewport">
         {supported ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<SceneLoading />}>
             <GalleryExperience
               currentTrackId={currentTrackId}
               focusGroupId={focusGroupId}

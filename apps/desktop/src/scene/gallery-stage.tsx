@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Group, MathUtils, Mesh, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlhifi/shared";
@@ -9,6 +9,8 @@ import { getSeedHue } from "../lib/seed";
 import { normalizeLightPreset } from "../lib/light-presets";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
+import { Turntable } from "./turntable";
+import { createTurntableBridge, TURNTABLE_MODEL_URL } from "./turntable-interaction";
 import { ContactShadow } from "./contact-shadows";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
@@ -23,6 +25,9 @@ import {
   clamp01
 } from "./scene-transition";
 import type { ScenePhase } from "./scene-transition";
+
+// 唱片机模型 6 MB 左右：场景一挂载就预载，避免第一次进交互区出现黑屏。
+useLoader.preload(GLTFLoader, TURNTABLE_MODEL_URL);
 
 /** 程序化环境贴图：透明/金属材质需要可反射的周围环境，否则会是死黑。 */
 const ProceduralEnvironment = () => {
@@ -546,6 +551,7 @@ export const GalleryExperience = ({
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
   const [phase, setPhase] = useState<ScenePhase>("gallery");
+  const turntableBridge = useMemo(() => createTurntableBridge(), []);
   const [selectedSlotX, setSelectedSlotX] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
@@ -660,21 +666,31 @@ export const GalleryExperience = ({
           scrollRef={scrollRef}
         />
         {detailGroup && phase !== "gallery" ? (
-          <CaseDetail
-            coverPath={detailGroup.coverPath}
-            onClosed={handleClosed}
-            onPlay={() => {
-              const firstTrack = tracks.find((track) => track.id === detailGroup.trackIds[0]);
+          <>
+            <CaseDetail
+              bridge={turntableBridge}
+              coverPath={detailGroup.coverPath}
+              onClosed={handleClosed}
+              phase={phase}
+              slotX={selectedSlotX}
+              startedAt={startedAt}
+              tint={tintOf(detailGroup.id)}
+            />
+            <Suspense fallback={null}>
+              <Turntable
+                bridge={turntableBridge}
+                groupTrackIds={detailGroup.trackIds}
+                onPlay={() => {
+                  const firstTrack = tracks.find((track) => track.id === detailGroup.trackIds[0]);
 
-              if (firstTrack) {
-                onPlayTrack(firstTrack);
-              }
-            }}
-            phase={phase}
-            slotX={selectedSlotX}
-            startedAt={startedAt}
-            tint={tintOf(detailGroup.id)}
-          />
+                  if (firstTrack) {
+                    onPlayTrack(firstTrack);
+                  }
+                }}
+                phase={phase}
+              />
+            </Suspense>
+          </>
         ) : null}
       </Canvas>
 

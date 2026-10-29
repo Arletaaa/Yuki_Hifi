@@ -7,12 +7,12 @@ export type CasePhase = Exclude<ScenePhase, "gallery">;
 
 export const GALLERY_CAMERA: readonly [number, number, number] = [0, 1.78, 3.95];
 export const GALLERY_LOOK: readonly [number, number, number] = [0, 1.30, 0];
-export const DETAIL_CAMERA: readonly [number, number, number] = [0, 1.78, 6.2];
+export const DETAIL_CAMERA: readonly [number, number, number] = [0, 2.15, 7.0];
 /** 注视点抬高：交互区整体上移，台面和相邻 CD 都落到画面下缘之外。 */
-export const DETAIL_LOOK: readonly [number, number, number] = [0.15, 3.2, 0.1];
+export const DETAIL_LOOK: readonly [number, number, number] = [-0.1, 3.42, 0.1];
 
 /** 交互盒离墙留出 0.4m：盖子开到 180° 也不会碰到墙面；左半边，右侧留给 CD 机。 */
-export const INTERACTION_CASE_POSITION: readonly [number, number, number] = [-0.4, 3.2, 0.1];
+export const INTERACTION_CASE_POSITION: readonly [number, number, number] = [-0.75, 3.2, 0.85];
 /** 陈列态 CD 盒高 0.52，交互态模型高 1.15；飞行体直接用交互模型缩放，避免换模型跳变。 */
 export const DISPLAY_CASE_HEIGHT = 0.52;
 export const INTERACTION_CASE_HEIGHT = 1.15;

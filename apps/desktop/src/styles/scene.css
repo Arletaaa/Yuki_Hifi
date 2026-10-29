@@ -44,6 +44,52 @@
   line-height: 1.7;
   color: var(--text-dim);
 }
+
+.scene-stage__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 236, 214, 0.06), transparent 58%),
+    var(--bg-deep);
+  color: var(--text-dim);
+}
+
+.scene-stage__loading-disc {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 240, 220, 0.16);
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255, 240, 220, 0.5),
+      rgba(255, 240, 220, 0.08) 22%,
+      transparent 42%,
+      transparent 62%,
+      rgba(255, 240, 220, 0.18) 82%,
+      rgba(255, 240, 220, 0.5)
+    ),
+    radial-gradient(circle at center, var(--bg-deep) 0 17%, transparent 18%);
+  box-shadow: 0 0 34px rgba(255, 214, 170, 0.08);
+  animation: scene-loading-spin 1.8s linear infinite;
+}
+
+.scene-stage__loading-copy {
+  font-size: 10.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+@keyframes scene-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 /* ---------- 单排展厅 ---------- */
 
 .volume-ring {
