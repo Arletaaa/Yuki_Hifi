@@ -60,6 +60,6 @@
 ## 实施注记（2026-10-30）
 
 - 光效已扩展为四档（新增星空），设置浮层与 `scene/light-effects.tsx` 均已接入。
-- 场景当前是单排 CD 货架，不是长廊；差异见 ADR 005 注记与 [next-steps](../product/next-steps.md)。
+- 场景当前是单排 CD 货架，不是长廊；v1.0 范围已由 [ADR 007](007-v1-scope-convergence.md) 定案。
 - 管理歌曲已改为设置上的叠加弹窗（不再独立窗口）；原“切回窗口刷新曲库”的 focus 监听在改造时移除。
 - 重命名只改副本文件名和 manifest，**不写音频标签**（未引入 tag writer）。

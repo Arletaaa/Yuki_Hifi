@@ -1,8 +1,8 @@
-# 场景展厅规格（Scene Gallery）— CD 长廊
+# 场景展厅规格（Scene Gallery）— CD 长廊（已取消）
 
-> **2026-10-30 现状注记**：当前实现是单排 CD 货架（`apps/desktop/src/scene/gallery-stage.tsx`，同时可见 7 张），本文描述的 Bay 长廊、生长动画和沿走廊移动尚未实现。是否恢复长廊或正式改为货架，见 [next-steps](next-steps.md) 的“画廊形态”待决项。
+> **已取消（2026-10-30，[ADR 007](../decisions/007-v1-scope-convergence.md)）**：v1.0 使用单排 CD 货架（`apps/desktop/src/scene/gallery-stage.tsx`），本文描述的 Bay 长廊、生长动画、沿走廊移动和收藏外观不纳入 v1.0。本文件保留作历史，长廊/Bay 转入 v1.1+ backlog。
 
-> 决策依据：[ADR 005](../decisions/005-scene-gallery.md)。本文档是 S2R 系列阶段的实现与验收依据。
+> 历史决策依据：[ADR 005](../decisions/005-scene-gallery.md)。本文档是 S2R 系列阶段的历史实现与验收记录，已被 ADR 007 取消。
 > 第二轮修订（2026-10-24）：曲库**全部**入场、收藏只改变外观、成长表现为长廊向外延伸、镜头沿走廊移动。原"六档房间替换"模型作废。
 
 ## 1. 概念

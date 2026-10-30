@@ -1,8 +1,10 @@
 # Arlt HiFi Player Design Language
 
-> 方向：「夜空唱片室」为色彩与材质基底。见 [ADR 004](decisions/004-visual-direction.md)。
-> 本文档分两部分：**系统层**（面板、列表、播放栏、设置，S2 已实现并继续有效）与**场景层**（3D 展厅与播放台，S2R 实现，规则由 [ADR 005](decisions/005-scene-gallery.md) 与 [场景展厅规格](scene-gallery.md) 定义）。
+> 方向：「夜空唱片室」为色彩与材质基底。见 [ADR 004](../decisions/004-visual-direction.md)。
+> 本文档分两部分：**系统层**（面板、设置、音量环等仍有效）与**场景层**（3D 货架 + CD 盒 + 唱片机，规则由 [ADR 005](../decisions/005-scene-gallery.md) / [ADR 007](../decisions/007-v1-scope-convergence.md) 与 [场景规格](scene-gallery.md) 定义）。
 > 本文档是界面改动的验收依据；实现落地到什么程度，以两份文档的"验收检查项"为准。
+
+> **2026-10-30 范围注记**：v1.0 已收敛为单排 CD 货架 + CD 盒 + 唱片机（[ADR 007](../decisions/007-v1-scope-convergence.md)）；本文中的长廊 / 播放台 / 收藏 / 列表降级条款不再作为 v1.0 验收依据。视觉语言（色彩、材质、排版、音量环）继续有效。
 
 ## 1. 一句话气质
 

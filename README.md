@@ -45,7 +45,7 @@ pnpm dev:web
 
 ## 当前进度
 
-v1.0 的主链路已经跑通，剩余交付项、产品缺口与待决事项见 [docs/product/next-steps.md](docs/product/next-steps.md)。阶段状态见 [roadmap](docs/product/roadmap.md)，最近一次交接见 [handoff](docs/workflow/handoff.md)。
+v1.0 的主链路已经跑通，范围已由 [ADR 007](docs/decisions/007-v1-scope-convergence.md) 收敛为“单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条”；收藏、长廊/Bay、列表降级不在 v1.0。剩余交付项见 [docs/product/next-steps.md](docs/product/next-steps.md)，阶段状态见 [roadmap](docs/product/roadmap.md)，最近一次交接见 [handoff](docs/workflow/handoff.md)。
 
 ## 质量检查
 
