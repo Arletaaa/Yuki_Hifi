@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { AppSettings, Track } from "@arlhifi/shared";
+import type { AppSettings, PlaybackMode, Track } from "@arlhifi/shared";
 import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
@@ -25,7 +25,6 @@ export const App = () => {
   const library = usePlayerStore((state) => state.library);
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id ?? null);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
-  const playTrack = usePlayerStore((state) => state.playTrack);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const librarySort = useSettingsStore((state) => state.librarySort);
 
@@ -51,10 +50,20 @@ export const App = () => {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as AppSettings;
+          const parsedMode: unknown = (parsed as { playbackMode?: unknown }).playbackMode;
+          const playbackMode: PlaybackMode =
+            parsedMode === "sequential" || parsedMode === "loop" || parsedMode === "shuffle"
+              ? parsedMode
+              : parsedMode === "stop"
+                ? "sequential"
+                : parsedMode === "repeat-one"
+                  ? "loop"
+                  : "sequential";
+
           hydrateSettings(parsed);
           usePlayerStore.setState({
             favorites: parsed.favorites,
-            playbackMode: parsed.playbackMode === "stop" ? "stop" : "repeat-one",
+            playbackMode,
             volume: parsed.volume
           });
         } catch {
@@ -158,7 +167,6 @@ export const App = () => {
         focusGroupId={focusRequest?.groupId ?? null}
         focusNonce={focusRequest?.nonce ?? 0}
         groups={galleryGroups}
-        onPlayTrack={playTrack}
         tracks={library}
       />
 

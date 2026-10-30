@@ -10,18 +10,14 @@ export const useAudioPlayback = (): void => {
   const status = usePlayerStore((state) => state.status);
   const volume = usePlayerStore((state) => state.volume);
   const muted = usePlayerStore((state) => state.muted);
-  const playbackMode = usePlayerStore((state) => state.playbackMode);
-  const playbackModeRef = useRef(playbackMode);
+  const playbackEpoch = usePlayerStore((state) => state.playbackEpoch);
+  const seekRequest = usePlayerStore((state) => state.seekRequest);
   const handleTrackEnded = usePlayerStore((state) => state.handleTrackEnded);
   const setPositionSeconds = usePlayerStore((state) => state.setPositionSeconds);
   const setDurationSeconds = usePlayerStore((state) => state.setDurationSeconds);
   const markPlaybackStarted = usePlayerStore((state) => state.markPlaybackStarted);
   const markPlaybackPaused = usePlayerStore((state) => state.markPlaybackPaused);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
-
-  useEffect(() => {
-    playbackModeRef.current = playbackMode;
-  }, [playbackMode]);
 
   useEffect(() => {
     const audio = new Audio();
@@ -37,14 +33,6 @@ export const useAudioPlayback = (): void => {
     };
 
     const handleEnded = (): void => {
-      // 循环播放：ended 后状态仍是 playing，不会触发下面的 effect，需要在事件里直接重播。
-      if (playbackModeRef.current === "repeat-one") {
-        audio.currentTime = 0;
-        void audio.play().catch((error: unknown) => {
-          setPlaybackError(getAudioPlaybackErrorMessage(error));
-        });
-      }
-
       handleTrackEnded();
     };
 
@@ -89,6 +77,21 @@ export const useAudioPlayback = (): void => {
   useEffect(() => {
     const audio = audioRef.current;
 
+    if (!audio || !seekRequest) {
+      return;
+    }
+
+    try {
+      const limit = Number.isFinite(audio.duration) ? audio.duration : seekRequest.seconds;
+      audio.currentTime = Math.max(0, Math.min(seekRequest.seconds, limit));
+    } catch {
+      // 元数据未就绪时忽略本次 seek；下一次进度拖动会重新触发。
+    }
+  }, [seekRequest]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+
     if (!audio) {
       return;
     }
@@ -109,7 +112,7 @@ export const useAudioPlayback = (): void => {
     }
 
     if (status === "playing") {
-      // 单曲循环：播放结束后同一首需要从头再放。
+      // 循环模式重播同一首时 currentTrack/status 都不变，需要 playbackEpoch 触发重跑。
       if (audio.ended) {
         audio.currentTime = 0;
       }
@@ -126,5 +129,5 @@ export const useAudioPlayback = (): void => {
     }
 
     audio.pause();
-  }, [currentTrack, markPlaybackStarted, setPlaybackError, status]);
+  }, [currentTrack, markPlaybackStarted, playbackEpoch, setPlaybackError, status]);
 };

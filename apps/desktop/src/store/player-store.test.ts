@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Track } from "@arlhifi/shared";
 import { createInitialPlayerState, createPlayerStore } from "./player-store";
 
@@ -93,16 +93,16 @@ describe("player store actions", () => {
     expect(store.getState().status).toBe("idle");
   });
 
-  it("defaults to repeat-one and switches between the two playback modes", () => {
+  it("defaults to sequential and switches between the three playback modes", () => {
     const store = createPlayerStore();
 
-    expect(store.getState().playbackMode).toBe("repeat-one");
+    expect(store.getState().playbackMode).toBe("sequential");
 
-    store.getState().setPlaybackMode("stop");
-    expect(store.getState().playbackMode).toBe("stop");
+    store.getState().setPlaybackMode("loop");
+    expect(store.getState().playbackMode).toBe("loop");
 
-    store.getState().setPlaybackMode("repeat-one");
-    expect(store.getState().playbackMode).toBe("repeat-one");
+    store.getState().setPlaybackMode("shuffle");
+    expect(store.getState().playbackMode).toBe("shuffle");
   });
 
   it("clamps volume", () => {
@@ -264,37 +264,119 @@ describe("queue editing", () => {
     expect(store.getState().currentTrack).toEqual(second);
   });
 });
-describe("track end behaviour", () => {
+describe("CD queue playback", () => {
   const createQueue = () => {
     const store = createPlayerStore();
     const first = createTrack("track-1", "First");
     const second = createTrack("track-2", "Second");
+    const third = createTrack("track-3", "Third");
 
-    store.getState().loadLibrary([first, second]);
+    store.getState().loadLibrary([first, second, third]);
 
-    return { first, second, store };
+    return { first, second, store, third };
   };
 
-  it("replays the current track in repeat-one mode", () => {
-    const { first, store } = createQueue();
+  it("plays an album queue from the selected index", () => {
+    const { first, second, store, third } = createQueue();
 
-    store.getState().playTrack(first);
-    store.getState().handleTrackEnded();
+    store.getState().playTracks([first, second, third], 1);
 
-    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().queue).toEqual([first, second, third]);
+    expect(store.getState().currentTrack).toEqual(second);
     expect(store.getState().status).toBe("playing");
     expect(store.getState().positionSeconds).toBe(0);
   });
 
-  it("stops on the same track when play-once mode ends", () => {
-    const { first, store } = createQueue();
+  it("advances sequentially and stops after the last track", () => {
+    const { first, second, store, third } = createQueue();
 
-    store.getState().playTrack(first);
-    store.getState().setPlaybackMode("stop");
+    store.getState().playTracks([first, second, third]);
+    store.getState().handleTrackEnded();
+    expect(store.getState().currentTrack).toEqual(second);
+
+    store.getState().handleTrackEnded();
+    expect(store.getState().currentTrack).toEqual(third);
+
+    store.getState().handleTrackEnded();
+    expect(store.getState().currentTrack).toEqual(third);
+    expect(store.getState().status).toBe("paused");
+  });
+
+  it("wraps to the first track in loop mode", () => {
+    const { first, second, store } = createQueue();
+
+    store.getState().playTracks([first, second]);
+    store.getState().setPlaybackMode("loop");
+    store.getState().handleTrackEnded();
+    expect(store.getState().currentTrack).toEqual(second);
+
+    store.getState().handleTrackEnded();
+    expect(store.getState().currentTrack).toEqual(first);
+  });
+
+  it("picks a different track in shuffle mode", () => {
+    const { first, second, store } = createQueue();
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.1);
+
+    store.getState().playTracks([first, second]);
+    store.getState().setPlaybackMode("shuffle");
     store.getState().handleTrackEnded();
 
-    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().currentTrack).toEqual(second);
+    random.mockRestore();
+  });
+
+  it("restarts a single-track CD in sequential and loop modes", () => {
+    const store = createPlayerStore();
+    const only = createTrack("track-1", "Only");
+
+    store.getState().playTracks([only]);
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(only);
     expect(store.getState().status).toBe("paused");
+
+    store.getState().setPlaybackMode("loop");
+    store.getState().handleTrackEnded();
+
+    expect(store.getState().currentTrack).toEqual(only);
+    expect(store.getState().status).toBe("playing");
+  });
+
+  it("navigates previous/next within the current CD", () => {
+    const { first, second, store, third } = createQueue();
+
+    store.getState().playTracks([first, second, third], 1);
+    store.getState().nextTrack();
+    expect(store.getState().currentTrack).toEqual(third);
+
+    store.getState().previousTrack();
+    expect(store.getState().currentTrack).toEqual(second);
+  });
+
+  it("restarts the current track when previous is pressed after 3 seconds", () => {
+    const { first, second, store } = createQueue();
+
+    store.getState().playTracks([first, second], 1);
+    store.getState().setPositionSeconds(8);
+    store.getState().previousTrack();
+
+    expect(store.getState().currentTrack).toEqual(second);
+    expect(store.getState().positionSeconds).toBe(0);
+    expect(store.getState().seekRequest?.seconds).toBe(0);
+  });
+
+  it("seeks within the current duration", () => {
+    const { first, store } = createQueue();
+
+    store.getState().playTracks([first]);
+    store.getState().seekTo(42.6);
+
+    expect(store.getState().positionSeconds).toBe(42);
+    expect(store.getState().seekRequest?.seconds).toBe(42.6);
+
+    store.getState().seekTo(9999);
+    expect(store.getState().positionSeconds).toBe(120);
   });
 
   it("does nothing when no track is playing", () => {

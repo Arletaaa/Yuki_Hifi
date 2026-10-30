@@ -13,7 +13,7 @@ describe("settings merging", () => {
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
-      playbackMode: "stop",
+      playbackMode: "shuffle",
       theme: "light",
       volume: 55
     });
@@ -22,18 +22,23 @@ describe("settings merging", () => {
       favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
-      playbackMode: "stop",
+      playbackMode: "shuffle",
       scenePreset: defaultScenePreset,
       theme: "light",
       volume: 55
     });
   });
 
+  it("migrates the old playback modes", () => {
+    expect(mergeSettings({ playbackMode: "stop" }).playbackMode).toBe("sequential");
+    expect(mergeSettings({ playbackMode: "repeat-one" }).playbackMode).toBe("loop");
+  });
+
   it("clamps numeric ranges and drops unknown enums", () => {
     const merged = mergeSettings({
       librarySort: "bogus",
       motionTier: "insane",
-      playbackMode: "shuffle",
+      playbackMode: "bogus",
       theme: "neon",
       volume: 400
     });

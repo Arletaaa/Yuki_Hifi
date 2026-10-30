@@ -20,7 +20,6 @@ export interface SceneStageProps {
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
-  readonly onPlayTrack: (track: Track) => void;
   readonly tracks: readonly Track[];
 }
 
@@ -29,7 +28,6 @@ export const SceneStage = ({
   focusGroupId,
   focusNonce,
   groups,
-  onPlayTrack,
   tracks
 }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
@@ -48,7 +46,6 @@ export const SceneStage = ({
               focusGroupId={focusGroupId}
               focusNonce={focusNonce}
               groups={groups}
-              onPlayTrack={onPlayTrack}
               tracks={tracks}
             />
           </Suspense>

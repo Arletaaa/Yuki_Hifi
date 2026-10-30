@@ -46,13 +46,16 @@ const writeSilentWav = async (filePath: string, durationSeconds: number): Promis
 
 const parsedAudio = (overrides: Partial<ParsedAudio> = {}): ParsedAudio => ({
   album: "Terrace EP",
+  albumArtist: "Aoi Kaze",
   artist: "Aoi Kaze",
   bitDepth: 24,
   codec: "FLAC",
+  discNumber: 1,
   durationSeconds: 214.4,
   picture: null,
   sampleRateHz: 96000,
   title: "Blue Hour",
+  trackNumber: 3,
   ...overrides
 });
 

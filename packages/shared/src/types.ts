@@ -2,7 +2,13 @@ export type AudioQuality = "unknown" | "lossless" | "lossy" | "hi-res";
 
 export type PlaybackStatus = "idle" | "playing" | "paused";
 
-export type PlaybackMode = "repeat-one" | "stop";
+export type PlaybackMode = "sequential" | "loop" | "shuffle";
+
+/** 一次 seek 请求；nonce 保证连续拖到同一秒也能触发音频层。 */
+export interface SeekRequest {
+  readonly nonce: number;
+  readonly seconds: number;
+}
 
 /** 曲目信息的来源：读取文件标签，或从文件名推断。 */
 export type MetadataSource = "tags" | "filename";
@@ -19,6 +25,12 @@ export interface Track {
   readonly title: string;
   readonly artist: string;
   readonly album: string;
+  /** 专辑艺术家；合辑用它归组，缺省回退到 artist。 */
+  readonly albumArtist?: string | undefined;
+  /** 音轨号（CD 内顺序）；缺失时为 0。 */
+  readonly trackNumber?: number | undefined;
+  /** 碟号；多碟专辑按碟拆成多张 CD，缺失时为 0。 */
+  readonly discNumber?: number | undefined;
   readonly durationSeconds: number;
   readonly quality: AudioQuality;
   readonly sampleRateHz: number;
@@ -36,6 +48,9 @@ export interface PlayerSnapshot {
   readonly queue: readonly Track[];
   readonly favorites: readonly string[];
   readonly playbackMode: PlaybackMode;
+  /** 当前曲目每一次“从头开始”的序号；循环单曲时也要让音频层重跑。 */
+  readonly playbackEpoch: number;
+  readonly seekRequest: SeekRequest | null;
   readonly volume: number;
   readonly muted: boolean;
   readonly positionSeconds: number;
@@ -73,7 +88,7 @@ export const defaultAppSettings: AppSettings = {
   favorites: [],
   librarySort: "title",
   motionTier: "standard",
-  playbackMode: "repeat-one",
+  playbackMode: "sequential",
   theme: "dark",
   volume: 72,
   scenePreset: defaultScenePreset

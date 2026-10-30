@@ -1,7 +1,7 @@
 import { create, type StateCreator } from "zustand";
 import { createStore } from "zustand/vanilla";
-import { initialPlayerSnapshot, type PlaybackMode, type PlayerSnapshot, type Track } from "@arlhifi/shared";
-import { getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
+import { initialPlayerSnapshot, type PlaybackMode, type PlayerSnapshot, type SeekRequest, type Track } from "@arlhifi/shared";
+import { getNextIndex, getPreviousIndex, getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
 
 export interface LibraryActions {
   readonly loadLibrary: (library: readonly Track[]) => void;
@@ -18,7 +18,11 @@ export interface PlaybackActions {
   readonly handleTrackEnded: () => void;
   readonly markPlaybackPaused: () => void;
   readonly markPlaybackStarted: () => void;
+  readonly nextTrack: () => void;
   readonly playTrack: (track: Track) => void;
+  readonly playTracks: (tracks: readonly Track[], startIndex?: number) => void;
+  readonly previousTrack: () => void;
+  readonly seekTo: (seconds: number) => void;
   readonly setDurationSeconds: (durationSeconds: number) => void;
   readonly setPlaybackError: (message: string | null) => void;
   readonly setPlaybackMode: (playbackMode: PlaybackMode) => void;
@@ -49,7 +53,27 @@ const getPlayableQueue = (state: Pick<PlayerStore, "queue" | "library">): readon
   return state.library;
 };
 
-/** 曲库切片：扫描结果与收藏。收藏只是 id 集合，不决定曲库内容。 */
+const seekRequestFor = (state: Pick<PlayerStore, "seekRequest">, seconds: number): SeekRequest => ({
+  seconds,
+  nonce: (state.seekRequest?.nonce ?? 0) + 1
+});
+
+const startTrack = (
+  state: Pick<PlayerStore, "playbackEpoch">,
+  queue: readonly Track[],
+  track: Track
+): Partial<PlayerStore> => ({
+  queue: [...queue],
+  currentTrack: track,
+  playbackErrorMessage: null,
+  playbackEpoch: state.playbackEpoch + 1,
+  positionSeconds: 0,
+  durationSeconds: track.durationSeconds,
+  seekRequest: null,
+  status: "playing"
+});
+
+/** 曲库切片：扫描结果与收藏。收藏只是 id 集合。 */
 const createLibrarySlice: StateCreator<PlayerStore, [], [], LibraryActions> = (set) => ({
   loadLibrary: (library) => {
     const nextLibrary = [...library];
@@ -66,6 +90,7 @@ const createLibrarySlice: StateCreator<PlayerStore, [], [], LibraryActions> = (s
         currentTrack: currentTrackIsInLibrary ? state.currentTrack : null,
         positionSeconds: currentTrackIsInLibrary ? state.positionSeconds : 0,
         durationSeconds: currentTrackIsInLibrary ? state.durationSeconds : 0,
+        seekRequest: currentTrackIsInLibrary ? state.seekRequest : null,
         playbackErrorMessage: null,
         status: currentTrackIsInLibrary ? state.status : "idle"
       };
@@ -104,17 +129,12 @@ const createQueueSlice: StateCreator<PlayerStore, [], [], QueueActions> = (set) 
           currentTrack: null,
           status: "idle" as const,
           positionSeconds: 0,
-          durationSeconds: 0
+          durationSeconds: 0,
+          seekRequest: null
         };
       }
 
-      return {
-        queue: nextQueue,
-        currentTrack: replacement,
-        status: "playing" as const,
-        positionSeconds: 0,
-        durationSeconds: replacement.durationSeconds
-      };
+      return startTrack(state, nextQueue, replacement);
     });
   },
   clearQueue: () => {
@@ -124,6 +144,7 @@ const createQueueSlice: StateCreator<PlayerStore, [], [], QueueActions> = (set) 
       status: "idle",
       positionSeconds: 0,
       durationSeconds: 0,
+      seekRequest: null,
       playbackErrorMessage: null
     });
   },
@@ -137,15 +158,99 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
   playTrack: (track) => {
     set((state) => {
       const queueIncludesTrack = state.queue.some((queuedTrack) => queuedTrack.id === track.id);
+      const queue = queueIncludesTrack ? state.queue : [...state.queue, track];
 
-      return {
-        currentTrack: track,
-        queue: queueIncludesTrack ? state.queue : [...state.queue, track],
+      return startTrack(state, queue, track);
+    });
+  },
+  playTracks: (tracks, startIndex = 0) => {
+    const queue = [...tracks];
+
+    if (queue.length === 0) {
+      return;
+    }
+
+    const index = Math.min(Math.max(Math.round(startIndex), 0), queue.length - 1);
+    const track = queue[index];
+
+    if (!track) {
+      return;
+    }
+
+    set((state) => startTrack(state, queue, track));
+  },
+  nextTrack: () => {
+    const state = get();
+    const queue = getPlayableQueue(state);
+
+    if (queue.length === 0) {
+      return;
+    }
+
+    const currentIndex = state.currentTrack
+      ? queue.findIndex((track) => track.id === state.currentTrack?.id)
+      : -1;
+    const nextIndex = getNextIndex(queue.length, currentIndex, state.playbackMode);
+    const next = nextIndex >= 0 ? queue[nextIndex] : null;
+
+    if (!next) {
+      const only = queue[0];
+
+      if (queue.length === 1 && only) {
+        set(startTrack(state, queue, only));
+        return;
+      }
+
+      set({ status: "paused" });
+      return;
+    }
+
+    set(startTrack(state, queue, next));
+  },
+  previousTrack: () => {
+    const state = get();
+
+    if (!state.currentTrack) {
+      return;
+    }
+
+    // 标准播放器行为：播放超过 3 秒时先回到本曲开头。
+    if (state.positionSeconds > 3) {
+      set({
         positionSeconds: 0,
-        durationSeconds: track.durationSeconds,
-        playbackErrorMessage: null,
-        status: "playing"
-      };
+        seekRequest: seekRequestFor(state, 0)
+      });
+      return;
+    }
+
+    const queue = getPlayableQueue(state);
+    const currentIndex = queue.findIndex((track) => track.id === state.currentTrack?.id);
+    const previousIndex = getPreviousIndex(queue.length, currentIndex, state.playbackMode);
+    const previous = previousIndex >= 0 ? queue[previousIndex] : null;
+
+    if (!previous) {
+      set({
+        positionSeconds: 0,
+        seekRequest: seekRequestFor(state, 0)
+      });
+      return;
+    }
+
+    set(startTrack(state, queue, previous));
+  },
+  seekTo: (seconds) => {
+    const state = get();
+
+    if (!state.currentTrack) {
+      return;
+    }
+
+    const duration = state.durationSeconds || state.currentTrack.durationSeconds;
+    const clamped = Math.max(0, Math.min(seconds, duration > 0 ? duration : seconds));
+
+    set({
+      positionSeconds: Math.floor(clamped),
+      seekRequest: seekRequestFor(state, clamped)
     });
   },
   togglePlayback: () => {
@@ -190,8 +295,8 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
     set((state) => ({ muted: !state.muted }));
   },
   /**
-   * 播完一首后：循环播放重播本曲，播完即停保持暂停；
-   * 不做自动跳曲——一个详情页只负责当前这首歌。
+   * 播完一首后：顺序模式到队尾停止；循环模式回到第一首；
+   * 随机模式抽下一首。队列就是当前 CD 的曲目。
    */
   handleTrackEnded: () => {
     const state = get();
@@ -200,12 +305,17 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    if (state.playbackMode === "repeat-one") {
-      set({ positionSeconds: 0, status: "playing" });
+    const queue = getPlayableQueue(state);
+    const currentIndex = queue.findIndex((track) => track.id === state.currentTrack?.id);
+    const nextIndex = getNextIndex(queue.length, currentIndex, state.playbackMode);
+    const next = nextIndex >= 0 ? queue[nextIndex] : null;
+
+    if (!next) {
+      set({ status: "paused" });
       return;
     }
 
-    set({ status: "paused" });
+    set(startTrack(state, queue, next));
   }
 });
 

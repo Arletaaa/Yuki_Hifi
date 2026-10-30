@@ -14,9 +14,12 @@ const HI_RES_BIT_DEPTH = 24;
 export interface AudioMetadataLike {
   readonly common: {
     readonly album?: string | undefined;
+    readonly albumartist?: string | undefined;
     readonly artist?: string | undefined;
+    readonly disk?: { readonly no?: number | null } | undefined;
     readonly picture?: readonly { readonly data: Uint8Array; readonly format: string }[] | undefined;
     readonly title?: string | undefined;
+    readonly track?: { readonly no?: number | null } | undefined;
   };
   readonly format: {
     readonly bitsPerSample?: number | undefined;
@@ -28,13 +31,16 @@ export interface AudioMetadataLike {
 
 export interface ParsedAudio {
   readonly album: string | null;
+  readonly albumArtist: string | null;
   readonly artist: string | null;
   readonly bitDepth: number;
   readonly codec: string | null;
+  readonly discNumber: number;
   readonly durationSeconds: number;
   readonly picture: { readonly data: Uint8Array; readonly mime: string } | null;
   readonly sampleRateHz: number;
   readonly title: string | null;
+  readonly trackNumber: number;
 }
 
 /** 从 music-metadata 结果中抽出我们需要的字段（纯函数）。 */
@@ -43,13 +49,16 @@ export const extractAudio = (metadata: AudioMetadataLike): ParsedAudio => {
 
   return {
     album: metadata.common.album?.trim() || null,
+    albumArtist: metadata.common.albumartist?.trim() || null,
     artist: metadata.common.artist?.trim() || null,
     bitDepth: metadata.format.bitsPerSample ?? 0,
     codec: metadata.format.codec ?? null,
+    discNumber: metadata.common.disk?.no ?? 0,
     durationSeconds: metadata.format.duration ?? 0,
     picture: picture ? { data: picture.data, mime: picture.format } : null,
     sampleRateHz: metadata.format.sampleRate ?? 0,
-    title: metadata.common.title?.trim() || null
+    title: metadata.common.title?.trim() || null,
+    trackNumber: metadata.common.track?.no ?? 0
   };
 };
 
@@ -117,6 +126,9 @@ export const createTrackFromFilePath = (filePath: string): Track => {
     title,
     artist: "Unknown Artist",
     album: "Unknown Album",
+    albumArtist: undefined,
+    trackNumber: 0,
+    discNumber: 0,
     durationSeconds: 0,
     quality: getAudioQuality(filePath),
     sampleRateHz: 0,
@@ -142,6 +154,9 @@ export const toTrack = (filePath: string, parsed: ParsedAudio | null, coverPath:
     title: parsed.title ?? fallback.title,
     artist: parsed.artist ?? fallback.artist,
     album: parsed.album ?? fallback.album,
+    albumArtist: parsed.albumArtist ?? undefined,
+    trackNumber: parsed.trackNumber,
+    discNumber: parsed.discNumber,
     durationSeconds: Math.max(0, Math.round(parsed.durationSeconds)),
     sampleRateHz: parsed.sampleRateHz,
     bitDepth: parsed.bitDepth,

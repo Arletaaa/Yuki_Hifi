@@ -78,13 +78,16 @@ describe("track mapping", () => {
       "D:\\Music\\Blue Hour.flac",
       {
         album: "Terrace EP",
+        albumArtist: "Aoi Kaze",
         artist: "Aoi Kaze",
         bitDepth: 24,
         codec: "FLAC",
+        discNumber: 1,
         durationSeconds: 214.6,
         picture: null,
         sampleRateHz: 96000,
-        title: "Blue Hour"
+        title: "Blue Hour",
+        trackNumber: 3
       },
       "C:\\covers\\abc.jpg"
     );
@@ -102,13 +105,16 @@ describe("track mapping", () => {
       "D:\\Music\\Song.flac",
       {
         album: "Album",
+        albumArtist: null,
         artist: "Artist",
         bitDepth: 16,
         codec: "FLAC",
+        discNumber: 1,
         durationSeconds: 100,
         picture: null,
         sampleRateHz: 44100,
-        title: "Song"
+        title: "Song",
+        trackNumber: 1
       },
       null
     );

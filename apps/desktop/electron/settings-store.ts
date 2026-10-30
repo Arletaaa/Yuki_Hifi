@@ -18,7 +18,24 @@ const isLibrarySortKey = (value: unknown): value is LibrarySortKey =>
   value === "title" || value === "artist" || value === "duration" || value === "imported";
 
 const isPlaybackMode = (value: unknown): value is PlaybackMode =>
-  value === "repeat-one" || value === "stop";
+  value === "sequential" || value === "loop" || value === "shuffle";
+
+/** 旧设置只有 stop / repeat-one；迁移到新的三态播放模式。 */
+const normalizePlaybackMode = (value: unknown): PlaybackMode => {
+  if (isPlaybackMode(value)) {
+    return value;
+  }
+
+  if (value === "stop") {
+    return "sequential";
+  }
+
+  if (value === "repeat-one") {
+    return "loop";
+  }
+
+  return defaultAppSettings.playbackMode;
+};
 
 const readStringArray = (value: unknown): readonly string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -48,7 +65,7 @@ export const mergeSettings = (raw: unknown): AppSettings => {
     favorites: readStringArray(record.favorites),
     librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
-    playbackMode: isPlaybackMode(record.playbackMode) ? record.playbackMode : defaultAppSettings.playbackMode,
+    playbackMode: normalizePlaybackMode(record.playbackMode),
     theme: isThemeMode(record.theme) ? record.theme : defaultAppSettings.theme,
     volume: clampInt(record.volume, 0, 100, defaultAppSettings.volume),
     scenePreset: readPreset(record.scenePreset)

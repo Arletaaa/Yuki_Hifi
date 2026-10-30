@@ -37,6 +37,29 @@ describe("gallery grouping", () => {
     expect(terrace?.artist).toBe("Kaze");
   });
 
+  it("orders tracks by track number and splits multi-disc albums", () => {
+    const groups = groupTracksForGallery([
+      { ...createTrack("1", "A1", "Kaze", "Terrace EP"), discNumber: 1, trackNumber: 2 },
+      { ...createTrack("2", "A2", "Kaze", "Terrace EP"), discNumber: 1, trackNumber: 1 },
+      { ...createTrack("3", "B1", "Kaze", "Terrace EP"), discNumber: 2, trackNumber: 1 }
+    ]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]?.trackIds).toEqual(["2", "1"]);
+    expect(groups[1]?.trackIds).toEqual(["3"]);
+  });
+
+  it("groups compilations by album artist", () => {
+    const groups = groupTracksForGallery([
+      { ...createTrack("1", "A1", "Artist A", "Compilation"), albumArtist: "Various Artists" },
+      { ...createTrack("2", "A2", "Artist B", "Compilation"), albumArtist: "Various Artists" }
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.artist).toBe("Various Artists");
+    expect(groups[0]?.trackIds).toEqual(["1", "2"]);
+  });
+
   it("falls back to grouping by artist when the album is unknown", () => {
     const groups = groupTracksForGallery([
       createTrack("1", "A1", "Kaze", "Unknown Album"),

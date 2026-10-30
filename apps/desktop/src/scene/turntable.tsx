@@ -12,6 +12,7 @@ import {
   Vector3
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import type { Track } from "@arlhifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import type { CasePhase } from "./scene-transition";
 import {
@@ -34,9 +35,9 @@ import type { TurntableBridge } from "./turntable-interaction";
 
 export interface TurntableProps {
   readonly bridge: TurntableBridge;
-  readonly groupTrackIds: readonly string[];
-  readonly onPlay: () => void;
+  readonly onArmDownChange: (armDown: boolean) => void;
   readonly phase: CasePhase;
+  readonly tracks: readonly Track[];
 }
 
 const findNode = (root: Object3D, name: string): Object3D => {
@@ -55,7 +56,7 @@ const findNode = (root: Object3D, name: string): Object3D => {
  * - 拖唱臂到 CD 上开始播放，拖走暂停；
  * - CD 是否在盘上由 CaseDetail 通过 bridge 同步。
  */
-export const Turntable = ({ bridge, groupTrackIds, onPlay, phase }: TurntableProps) => {
+export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableProps) => {
   const gltf = useLoader(GLTFLoader, TURNTABLE_MODEL_URL);
   const { gl } = useThree();
   const groupRef = useRef<Group>(null);
@@ -116,8 +117,6 @@ export const Turntable = ({ bridge, groupTrackIds, onPlay, phase }: TurntablePro
   const [draggingArm, setDraggingArm] = useState(false);
   const [cdSeated, setCdSeated] = useState(false);
   const status = usePlayerStore((state) => state.status);
-  const playbackMode = usePlayerStore((state) => state.playbackMode);
-  const wasPlaying = useRef(false);
 
   const rateRef = useRef(0);
   const spinRef = useRef(0);
@@ -183,23 +182,51 @@ export const Turntable = ({ bridge, groupTrackIds, onPlay, phase }: TurntablePro
       return;
     }
 
-    wasPlaying.current = true;
-
-    if (state.currentTrack && groupTrackIds.includes(state.currentTrack.id)) {
+    if (state.currentTrack && tracks.some((track) => track.id === state.currentTrack?.id)) {
       state.togglePlayback();
       return;
     }
 
-    onPlay();
-  }, [groupTrackIds, onPlay]);
+    state.playTracks(tracks);
+  }, [tracks]);
 
   const requestPause = useCallback(() => {
-    wasPlaying.current = false;
-
     if (usePlayerStore.getState().status === "playing") {
       usePlayerStore.getState().togglePlayback();
     }
   }, []);
+
+  useEffect(() => {
+    onArmDownChange(armDown);
+  }, [armDown, onArmDownChange]);
+
+  /** 唱片机 Start/Stop 与详情条播放键共用这一段逻辑。 */
+  const toggleStartStop = useCallback(() => {
+    if (phaseRef.current !== "detail" || !cdSeatedRef.current) {
+      return;
+    }
+
+    pressRef.current = 1;
+    const next = !motorOnRef.current;
+    setMotorOn(next);
+
+    if (next) {
+      if (armDownRef.current) {
+        requestPlay();
+      }
+      return;
+    }
+
+    requestPause();
+  }, [requestPause, requestPlay]);
+
+  useEffect(() => {
+    bridge.toggleStartStop = toggleStartStop;
+
+    return () => {
+      bridge.toggleStartStop = null;
+    };
+  }, [bridge, toggleStartStop]);
 
   /** 离开 detail：直接停转、唱臂回架、音频暂停。 */
   useEffect(() => {
@@ -216,23 +243,14 @@ export const Turntable = ({ bridge, groupTrackIds, onPlay, phase }: TurntablePro
     requestPause();
   }, [phase, requestPause]);
 
-  /** 播完即停：曲目结束后只停转盘，机头留在盘上。 */
+  /** 播放状态驱动电机：详情条暂停时停转，恢复播放时重新起转。 */
   useEffect(() => {
-    if (status === "playing") {
-      wasPlaying.current = true;
+    if (!cdSeated || !armDown) {
       return;
     }
 
-    if (status !== "paused" || !wasPlaying.current) {
-      return;
-    }
-
-    wasPlaying.current = false;
-
-    if (playbackMode === "stop" && armDown && motorOn && cdSeated) {
-      setMotorOn(false);
-    }
-  }, [armDown, cdSeated, motorOn, playbackMode, status]);
+    setMotorOn(status === "playing");
+  }, [armDown, cdSeated, status]);
 
   const handleArmPointerDown = (event: ThreeEvent<PointerEvent>): void => {
     if (phase !== "detail") {
@@ -292,23 +310,8 @@ export const Turntable = ({ bridge, groupTrackIds, onPlay, phase }: TurntablePro
   }, [draggingArm, requestPlay]);
 
   const handleButtonClick = (event: ThreeEvent<MouseEvent>): void => {
-    if (phase !== "detail" || !cdSeated) {
-      return;
-    }
-
     event.stopPropagation();
-    pressRef.current = 1;
-    const next = !motorOn;
-    setMotorOn(next);
-
-    if (next) {
-      if (armDown) {
-        requestPlay();
-      }
-      return;
-    }
-
-    requestPause();
+    toggleStartStop();
   };
 
   useFrame((_frame, delta) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Track } from "@arlhifi/shared";
-import { getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
+import { getNextIndex, getPreviousIndex, getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
 
 const createTrack = (id: string): Track => ({
   id,
@@ -47,5 +47,30 @@ describe("replacement index", () => {
 
   it("returns -1 when nothing remains", () => {
     expect(getReplacementIndex(0, 0)).toBe(-1);
+  });
+});
+
+describe("next/previous index", () => {
+  it("advances and stops at the end in sequential mode", () => {
+    expect(getNextIndex(3, 0, "sequential")).toBe(1);
+    expect(getNextIndex(3, 2, "sequential")).toBe(-1);
+    expect(getPreviousIndex(3, 1, "sequential")).toBe(0);
+    expect(getPreviousIndex(3, 0, "sequential")).toBe(-1);
+  });
+
+  it("wraps in loop mode", () => {
+    expect(getNextIndex(3, 2, "loop")).toBe(0);
+    expect(getPreviousIndex(3, 0, "loop")).toBe(2);
+  });
+
+  it("avoids the current track in shuffle mode", () => {
+    expect(getNextIndex(3, 1, "shuffle", () => 0.3)).toBe(0);
+    expect(getPreviousIndex(3, 1, "shuffle", () => 0.3)).toBe(0);
+    expect(getNextIndex(1, 0, "shuffle", () => 0.9)).toBe(0);
+  });
+
+  it("returns no target for empty queues", () => {
+    expect(getNextIndex(0, -1, "sequential")).toBe(-1);
+    expect(getPreviousIndex(0, -1, "loop")).toBe(-1);
   });
 });

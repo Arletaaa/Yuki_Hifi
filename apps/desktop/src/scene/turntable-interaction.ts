@@ -108,6 +108,8 @@ export interface TurntableBridge {
   armDown: boolean;
   spinning: boolean;
   spinAngle: number;
+  /** 由 Turntable 注册：详情播放条的播放键与唱片机 Start/Stop 走同一段逻辑。 */
+  toggleStartStop: (() => void) | null;
 }
 
 export const createTurntableBridge = (): TurntableBridge => ({
@@ -116,5 +118,6 @@ export const createTurntableBridge = (): TurntableBridge => ({
   cdSeated: false,
   armDown: false,
   spinning: false,
-  spinAngle: 0
+  spinAngle: 0,
+  toggleStartStop: null
 });

@@ -45,7 +45,6 @@ const describeImport = (result: LibraryImportResult): string => {
 /** 导入动作 + 进度 + 结果文案；导入完成后从主进程重新读取曲库。 */
 export const useLibraryImport = () => {
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
-  const rebuildQueueFromLibrary = usePlayerStore((state) => state.rebuildQueueFromLibrary);
   const [state, setState] = useState<LibraryImportState>(idleState);
 
   useEffect(() => {
@@ -95,14 +94,12 @@ export const useLibraryImport = () => {
         }
 
         loadLibrary(await api.loadLibrary());
-        // 队列当前恒等于曲库：导入后重建，新曲目才能接着播。
-        rebuildQueueFromLibrary();
         setState({ message: describeImport(result), phase: "done", progress: null });
       } catch (error) {
         setState({ message: getDesktopErrorMessage(error, "导入失败，请重试。"), phase: "error", progress: null });
       }
     },
-    [loadLibrary, rebuildQueueFromLibrary]
+    [loadLibrary]
   );
 
   const importFiles = useCallback((): void => {

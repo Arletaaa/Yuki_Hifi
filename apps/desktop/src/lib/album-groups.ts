@@ -17,22 +17,32 @@ const UNKNOWN_ARTIST = "Unknown Artist";
 
 const groupKeyOf = (track: Track): string => {
   const hasAlbum = track.album.trim().length > 0 && track.album !== UNKNOWN_ALBUM;
-  const hasArtist = track.artist.trim().length > 0 && track.artist !== UNKNOWN_ARTIST;
+  const artist = track.albumArtist?.trim() || track.artist;
+  const hasArtist = artist.trim().length > 0 && artist !== UNKNOWN_ARTIST;
+  const disc = (track.discNumber ?? 0) > 0 ? `::disc${track.discNumber}` : "";
 
   if (hasAlbum && hasArtist) {
-    return `${track.artist}::${track.album}`;
+    return `${artist}::${track.album}${disc}`;
   }
 
   if (hasAlbum) {
-    return `album::${track.album}`;
+    return `album::${track.album}${disc}`;
   }
 
   if (hasArtist) {
-    return `artist::${track.artist}`;
+    return `artist::${artist}`;
   }
 
   return `track::${track.id}`;
 };
+
+/** 同一张 CD 内按碟号/音轨号排；没有标签时保持导入顺序（稳定排序）。 */
+const cueOrder = (tracks: readonly Track[]): readonly Track[] =>
+  [...tracks].sort(
+    (left, right) =>
+      (left.discNumber ?? 0) - (right.discNumber ?? 0) ||
+      (left.trackNumber ?? 0) - (right.trackNumber ?? 0)
+  );
 
 const titleOf = (track: Track): string =>
   track.album.trim().length > 0 && track.album !== UNKNOWN_ALBUM ? track.album : track.artist;
@@ -78,7 +88,8 @@ export const groupTracksForGallery = (
   const groups: GalleryGroup[] = [];
 
   for (const [key, bucket] of buckets) {
-    const first = bucket.tracks[0];
+    const orderedTracks = cueOrder(bucket.tracks);
+    const first = orderedTracks[0];
 
     if (!first) {
       continue;
@@ -87,11 +98,11 @@ export const groupTracksForGallery = (
     groups.push({
       id: key,
       order: bucket.order,
-      artist: first.artist,
+      artist: first.albumArtist?.trim() || first.artist,
       title: titleOf(first),
-      coverPath: bucket.tracks.find((track) => track.coverPath !== null)?.coverPath ?? null,
-      durationSeconds: bucket.tracks.reduce((total, track) => total + track.durationSeconds, 0),
-      trackIds: bucket.tracks.map((track) => track.id)
+      coverPath: orderedTracks.find((track) => track.coverPath !== null)?.coverPath ?? null,
+      durationSeconds: orderedTracks.reduce((total, track) => total + track.durationSeconds, 0),
+      trackIds: orderedTracks.map((track) => track.id)
     });
   }
 

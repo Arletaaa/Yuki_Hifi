@@ -17,6 +17,7 @@ import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
 import { usePlayerStore } from "../store/player-store";
 import { VolumeRing } from "../components/volume-ring";
+import { DetailPlayer } from "../components/detail-player";
 import { LightEffects, SceneLighting } from "./light-effects";
 import {
   ENTER_SECONDS,
@@ -536,7 +537,6 @@ export interface GalleryExperienceProps {
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
-  readonly onPlayTrack: (track: Track) => void;
   readonly tracks: readonly Track[];
 }
 
@@ -545,7 +545,6 @@ export const GalleryExperience = ({
   focusGroupId,
   focusNonce,
   groups,
-  onPlayTrack,
   tracks
 }: GalleryExperienceProps) => {
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
@@ -554,6 +553,7 @@ export const GalleryExperience = ({
   const turntableBridge = useMemo(() => createTurntableBridge(), []);
   const [selectedSlotX, setSelectedSlotX] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
+  const [detailArmDown, setDetailArmDown] = useState(false);
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
   const scrollRef = useRef(0);
   const volume = usePlayerStore((state) => state.volume);
@@ -561,11 +561,27 @@ export const GalleryExperience = ({
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const lightVariant = normalizeLightPreset(scenePreset.light);
   const currentTrack = tracks.find((track) => track.id === currentTrackId) ?? null;
+  const detailTracks = useMemo(
+    () =>
+      detailGroup
+        ? detailGroup.trackIds
+            .map((trackId) => tracks.find((track) => track.id === trackId))
+            .filter((track): track is Track => Boolean(track))
+        : [],
+    [detailGroup, tracks]
+  );
   const currentGroupId = useMemo(() => {
     const group = groups.find((candidate) => currentTrackId !== null && candidate.trackIds.includes(currentTrackId));
 
     return group?.id ?? null;
   }, [currentTrackId, groups]);
+  const detailPlayerVisible = Boolean(
+    detailGroup &&
+      phase === "detail" &&
+      detailArmDown &&
+      currentTrack &&
+      detailGroup.trackIds.includes(currentTrack.id)
+  );
 
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("detail") === "1" && groups.length > 1) {
@@ -679,15 +695,9 @@ export const GalleryExperience = ({
             <Suspense fallback={null}>
               <Turntable
                 bridge={turntableBridge}
-                groupTrackIds={detailGroup.trackIds}
-                onPlay={() => {
-                  const firstTrack = tracks.find((track) => track.id === detailGroup.trackIds[0]);
-
-                  if (firstTrack) {
-                    onPlayTrack(firstTrack);
-                  }
-                }}
+                onArmDownChange={setDetailArmDown}
                 phase={phase}
+                tracks={detailTracks}
               />
             </Suspense>
           </>
@@ -717,12 +727,21 @@ export const GalleryExperience = ({
         <p>CD · ALBUM · MUSIC</p>
       </div>
 
-      <div className="gallery-caption">
-        <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
-        <p className="gallery-caption__hint">
-          {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
-        </p>
-      </div>
+      {detailPlayerVisible ? (
+        <DetailPlayer
+          onPlayPause={() => {
+            turntableBridge.toggleStartStop?.();
+          }}
+          tracks={detailTracks}
+        />
+      ) : (
+        <div className="gallery-caption">
+          <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
+          <p className="gallery-caption__hint">
+            {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
+          </p>
+        </div>
+      )}
 
       {phase === "gallery" ? (
         <div className="gallery-open">
