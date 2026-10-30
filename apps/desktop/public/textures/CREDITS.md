@@ -20,8 +20,9 @@
 | 文件 | 来源 | 许可 | 状态 |
 | --- | --- | --- | --- |
 | `apps/desktop/public/models/cd-case.glb` | [Sketchfab: cd-jewel-case](https://sketchfab.com/3d-models/cd-jewel-case-f6c8386e76e54918b551ebdd276479dd) | **CC-BY 4.0 — 必须署名** | 已启用，署名：`"CD Jewel Case" by 蓝人组合, licensed CC-BY 4.0, via Sketchfab` |
+| `apps/desktop/public/models/cd-player.glb` | Sketchfab "CD player" — 作者 [nguyentrongtam0512](https://sketchfab.com/nguyentrongtam0512) | **CC-BY 4.0 — 必须署名** | 已启用，署名：`"CD player" by nguyentrongtam0512, licensed CC-BY 4.0, via Sketchfab` |
 
-> CC-BY 要求界面可见署名：设置面板底部已显示，且不得移除。
+> CC-BY 要求界面可见署名：设置面板底部已同时显示两个模型的署名，且不得移除。
 
 ## 规则
 
