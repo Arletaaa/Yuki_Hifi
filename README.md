@@ -53,7 +53,10 @@ v1.0 的主链路已经跑通，范围已由 [ADR 007](docs/decisions/007-v1-sco
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm --filter @arlhifi/desktop dist  # Windows portable 安装包
 ```
+
+`dist` 产物在 `apps/desktop/release/ArltHiFiPlayer-<version>-portable.exe`，当前未签名。
 
 ## 工作区结构
 

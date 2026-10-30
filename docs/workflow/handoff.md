@@ -10,10 +10,12 @@
 
 - **范围定案**：2026-10-30 [ADR 007](../decisions/007-v1-scope-convergence.md)：v1.0 固定单排货架；删除收藏需求；列表/WebGL/低帧率降级不做门禁；进度与参数展示迁入 CD 详情新 UI；原 MVP / 长廊规格标记取消。
 - **真机**：2026-10-30 用户在真实桌面启动并跑过主流程，确认正常。
-- **门禁**：`pnpm typecheck` 四个 workspace 项目复跑通过；`dist` / `dist-electron` 产物时间为 10-29 23:55。
-- **未复跑**：最新提交后的 `pnpm test` / `pnpm build`（受限会话里 esbuild `spawn EPERM`）；`electron-builder` 安装包从未实际构建。
+- **门禁**：2026-10-30 复跑 `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿；测试 19 个文件 / 139 个用例（desktop 122 + shared 11 + harness 6）。
+- **打包**：新增 `electron-builder@26.18.0`，`electron` 移到 devDependencies，补 `author`；产出 `apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`（98,423,903 B，未签名）。
+- **装包冒烟**：portable 从 `LOCALAPPDATA` 启动成功，加载 `arlt-hifi-app://bundle/index.html`，canvas / preload / 封面 / 5 张专辑正常（`.verify/shots/package-smoke.png`）。
+- **未完成**：装包版的导入、播放、开盒、拖盘、落针、返回、重启恢复仍需真机手测。
 - **文档**：README / roadmap / next-steps / 唱片机文档 / ADR 003/005/006/007 已同步。
-- **下一步**：CD 详情信息条（进度 + seek + 格式/采样率/位深）；清理 favorites 死代码；打包与装包冒烟。
+- **下一步**：装包完整交互手测；CD 详情信息条（进度 + seek + 格式/采样率/位深）；清理 favorites 死代码。
 - **注意**：10-28 的“切回窗口刷新曲库”在改为叠加弹窗时被移除，当前只在启动、导入、管理操作后重新 `loadLibrary`。
 
 ## 这一阶段的成果（2026-10-27 快照）
@@ -251,8 +253,9 @@
 
 ```powershell
 pnpm typecheck          # 四个 workspace 项目全绿（desktop 两个 tsconfig + ui + shared + harness）
-pnpm test               # desktop 122 + shared 11 + harness 6（静态统计 139；最新提交后待复跑）
+pnpm test               # desktop 122 + shared 11 + harness 6（共 139）
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
+pnpm --filter @arlhifi/desktop dist  # electron-builder portable
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
 pnpm dev                # Vite + Electron（首次会按需把运行时复制到 LOCALAPPDATA）
 pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-debugging-port=9224
@@ -260,8 +263,9 @@ pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-d
 
 2026-10-30 验收补充：
 
-- `pnpm typecheck` 已复跑通过；`pnpm test` / `pnpm build` 待在非受限环境复跑。
-- 用户在真实桌面启动并跑过主流程，确认正常；装包版（electron-builder）仍未构建。
+- `pnpm typecheck`、`pnpm test`（139）、`pnpm build` 全部通过。
+- `ArltHiFiPlayer-0.1.0-portable.exe` 已产出；从 `LOCALAPPDATA` 启动，app 协议、canvas、preload、封面与曲库加载正常。
+- 装包版的完整导入/播放/唱片机交互仍需真机手测；安装包未签名。
 
 本机环境提示（DSH 沙箱下）：
 

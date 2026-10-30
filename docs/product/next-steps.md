@@ -24,27 +24,28 @@
 
 ### P0-1 门禁复跑
 
-- [ ] 在非 DSH 沙箱环境跑 `pnpm typecheck` / `pnpm test` / `pnpm build`。
-- 验收：三条命令退出码 0；记录测试文件数与用例数。
-- 备注：当前 19 个测试文件、静态统计 139 个用例；TypeScript 已通过，test/build 待复跑。
+- [x] 在非 DSH 沙箱环境跑 `pnpm typecheck` / `pnpm test` / `pnpm build`。
+- 结果：三条命令退出码 0；`typecheck` 4 个 workspace 项目；`test` 19 个文件 / 139 个用例（desktop 122 + shared 11 + harness 6）；`build` 产出 `dist` 与 `dist-electron`。
+- 备注：Vite 仍提示 `gallery-stage` chunk 907.93 kB（gzip 247.56 kB），不阻塞构建。
 
 ### P0-2 Windows portable 打包
 
-- [ ] `pnpm --filter @arlhifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 验收：产出 portable exe，能在干净目录启动。
-- 备注：`electron-builder` 从未实际执行。
+- [x] `pnpm --filter @arlhifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
+- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,423,903 B；未签名。
+- 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`。
 
 ### P0-3 安装包冒烟
 
-- [ ] 启动安装包 → 导入文件夹 → 播放 → 开盒 → 拖盘上机 → 落针 → 播完即停 → 返回 → 重启恢复设置。
-- 验收：媒体协议、`userData` 路径、`settings.json` 持久化、唱片机交互全部正常。
-- 备注：开发版真机已确认正常；装包版仍需单独验证。
+- [x] **启动与主界面**：portable 包从 `LOCALAPPDATA` 启动，加载 `arlt-hifi-app://bundle/index.html`；canvas、preload、封面与 5 张专辑正常，截图见 `.verify/shots/package-smoke.png`。
+- [ ] **完整交互**：导入文件夹 → 播放 → 开盒 → 拖盘上机 → 落针 → 播完即停 → 返回 → 重启恢复设置，仍待真机手测。
+- 备注：装包版读取的是现有 `%APPDATA%\Arlt HiFi Player` 曲库，说明 manifest 与媒体协议在打包后可用。
 
 ### P0-4 文档与提交
 
 - [x] README / roadmap / handoff / 唱片机文档同步。
 - [x] 决策落成 ADR 007，MVP 与长廊规格标记取消。
 - [x] 本轮决策文档提交并推送。
+- [x] P0 结果、打包配置与阻塞项提交并推送。
 
 ## 3. P1：v1.0 剩余产品工作
 
