@@ -7,15 +7,17 @@
 | 10-28 | CD 开盒/盘片拖出转场；星空光效；曲库管理独立窗口 → 叠加弹窗；音量环归零与画廊边界修复 |
 | 10-29 | 唱片机素材拆件（Deck/Platter/Tonearm/StartStop + 双灯）、1K 贴图、6.18 MB GLB；`turntable-interaction.ts` / `turntable.tsx` / `case-detail.tsx` 接入 |
 | 10-30 | commit `79dd69d`：CD 吸附/弹出、Start/Stop 起停转、唱臂落针播放、双灯、播完即停、返回合盒、CC-BY 署名 |
+| 10-30 | CD 详情播放条：可拖动进度、上一首/播放/下一首、顺序/循环/随机；播放键绑定唱片机按钮；CD 内多曲队列与元数据排序（ADR 008） |
 
 - **范围定案**：2026-10-30 [ADR 007](../decisions/007-v1-scope-convergence.md)：v1.0 固定单排货架；删除收藏需求；列表/WebGL/低帧率降级不做门禁；进度与参数展示迁入 CD 详情新 UI；原 MVP / 长廊规格标记取消。
 - **真机**：2026-10-30 用户在真实桌面启动并跑过主流程，确认正常。
-- **门禁**：2026-10-30 复跑 `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿；测试 19 个文件 / 139 个用例（desktop 122 + shared 11 + harness 6）。
+- **门禁**：2026-10-30 复跑 `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿；测试 19 个文件 / 152 个用例（desktop 135 + shared 11 + harness 6）。
 - **打包**：新增 `electron-builder@26.18.0`，`electron` 移到 devDependencies，补 `author`；产出 `apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`（98,423,903 B，未签名）。
 - **装包冒烟**：portable 从 `LOCALAPPDATA` 启动成功，加载 `arlt-hifi-app://bundle/index.html`，canvas / preload / 封面 / 5 张专辑正常（`.verify/shots/package-smoke.png`）。
-- **未完成**：装包版的导入、播放、开盒、拖盘、落针、返回、重启恢复仍需真机手测。
-- **文档**：README / roadmap / next-steps / 唱片机文档 / ADR 003/005/006/007 已同步。
-- **下一步**：装包完整交互手测；CD 详情信息条（进度 + seek + 格式/采样率/位深）；清理 favorites 死代码。
+- **播放验证**：详情播放条 1440×900 实拍 `.verify/shots/detail-player-live.png`；store/queue/元数据单测覆盖顺序、循环、随机、单曲 CD、seek、上一首 3 秒规则。
+- **未完成**：装包版完整交互手测；CD 多曲入库/管理；收藏死代码清理。
+- **文档**：README / roadmap / next-steps / 唱片机 / ADR 003/005/006/007/008 / [CD 模型](../product/cd-album-model.md)已同步。
+- **下一步**：CD 多曲导入与管理（文件夹作为 CD、手动合并/编辑）；清理 favorites；装包完整交互手测。
 - **注意**：10-28 的“切回窗口刷新曲库”在改为叠加弹窗时被移除，当前只在启动、导入、管理操作后重新 `loadLibrary`。
 
 ## 这一阶段的成果（2026-10-27 快照）
@@ -198,7 +200,7 @@
 - 修复：`lib/volume.ts` 新增 `volumeFromPointerAngle`，缺口内返回 `null` 并忽略这次移动；`volume-ring.tsx` 用它替换原来的角度换算，并记录是否穿过了缺口——从另一侧出来且与当前值相差 >45 时保持当前边界值，回到当前值附近才重新接管。
 - 验证：CDP 模拟拖拽——135°→0，穿过缺口到 100 侧仍为 0，回到 0 侧附近恢复为 2；从 100 穿过缺口到 0 侧仍为 100，回到 100 侧附近为 98。
 
-## 播放模式与画廊边界（2026-10-28）
+## 播放模式与画廊边界（2026-10-28，播放模式部分已被 ADR 008 取代）
 
 - 播放模式只剩「循环播放 / 播完即停」：`PlaybackMode = "repeat-one" | "stop"`，写入 `settings.json`；删除 sequential / shuffle、自动跳曲、`playNext` / `playPrevious` / `cyclePlaybackMode` 与队列导航纯函数。
 - 播完行为：循环模式在 `ended` 事件里直接重播本曲（否则 store 状态没变化，effect 不会重跑）；即停模式保持暂停、`currentTrack` 不变。
@@ -253,7 +255,7 @@
 
 ```powershell
 pnpm typecheck          # 四个 workspace 项目全绿（desktop 两个 tsconfig + ui + shared + harness）
-pnpm test               # desktop 122 + shared 11 + harness 6（共 139）
+pnpm test               # desktop 135 + shared 11 + harness 6（共 152）
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm --filter @arlhifi/desktop dist  # electron-builder portable
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
@@ -263,7 +265,7 @@ pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-d
 
 2026-10-30 验收补充：
 
-- `pnpm typecheck`、`pnpm test`（139）、`pnpm build` 全部通过。
+- `pnpm typecheck`、`pnpm test`（152）、`pnpm build` 全部通过。
 - `ArltHiFiPlayer-0.1.0-portable.exe` 已产出；从 `LOCALAPPDATA` 启动，app 协议、canvas、preload、封面与曲库加载正常。
 - 装包版的完整导入/播放/唱片机交互仍需真机手测；安装包未签名。
 
